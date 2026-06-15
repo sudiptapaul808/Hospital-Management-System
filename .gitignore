@@ -1,0 +1,26 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# Environment variables
+.env
+.env.*
+
+# Build output
+dist/
+build/
+
+# VS Code
+.vscode/
+
+# Database files
+*.db
+*.sqlite
+
+Frontend_old/
+App Dev 2 Project Report (HMS).pdf
+lesson_learned.md

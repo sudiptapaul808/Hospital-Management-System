@@ -1,0 +1,15 @@
+                List of relations
+ Schema |        Name         | Type  |  Owner   
+--------+---------------------+-------+----------
+ public | alembic_version     | table | hms_user
+ public | appointment         | table | hms_user
+ public | assigned_patient    | table | hms_user
+ public | doctor              | table | hms_user
+ public | doctor_availability | table | hms_user
+ public | doctordepartment    | table | hms_user
+ public | patient             | table | hms_user
+ public | patient_history     | table | hms_user
+ public | specialization_dept | table | hms_user
+ public | user                | table | hms_user
+(10 rows)
+
