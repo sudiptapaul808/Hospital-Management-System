@@ -3,12 +3,13 @@ import { onMounted, ref } from 'vue';
 import api from '../../services/api'
 import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue';
+import AppointmentsToday from './AppointmentsToday.vue';
 
 const route = useRoute()
 const router = useRouter()
 
 const loading = ref(false)
-const appointments = ref([])
+const patients = ref([])
 
 //Pagination controls====================================================================================
 const page = ref(Number(route.query?.page) || 1)
@@ -44,19 +45,19 @@ const prevPage = () => {
     }
 }
 
-//Fetch Appointments list=======================================================================================
-const fetchAppointments = async() => {
+//Fetch assigned patients list===============================================================================
+const fetchAssignedPatients = async() => {
     if (loading.value) return 
     loading.value = true
 
     try {
-        const res = await api.get(`/api/doctor/current_day_appointments`, {
+        const res = await api.get(`/api/doctor/assigned_patients`, {
             params: {
                 page: page.value,
                 per_page: per_page.value
             }
         })
-        appointments.value = res.data.data
+        patients.value = res.data.data
         total.value = res.data.pagination.total
     } catch (err) {
         console.log(err)
@@ -66,44 +67,39 @@ const fetchAppointments = async() => {
 }
 
 onMounted(() => {
-    fetchAppointments()
+    fetchAssignedPatients()
 })
 
-//time format================================================================================================
-const formatTime = (datatime) => {
-    return new Date(datetime).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-    })
+//send to view patient page=====================================================================================
+const goToPatient = (id) => {
+    router.push(`/doctor/assigned-patients/${id}`)
 }
-//Send to view patient page=================================================================================
-
 </script>
 
 <template>
     <div>
         <v-row class="mb-3" align="center" justify="space-between">
             <v-col cols="auto">
-                <h2>Appointments Scheduled today</h2>
+                <h2>Assigned Patients</h2>
             </v-col>
         </v-row>
         <v-table>
             <thead>
                 <tr>
-                    <th>Time</th>
-                    <th>Patient ID</th>
-                    <th>Patient Name</th>
-                    <th>Status</th>
+                    <th>Patient Id</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Gender</th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="appointment in appointments" :key="appointment.id">
-                    <td>{{ formatTime(appointment.datetime) }}</td>
-                    <td>{{ appointment.patient.id }}</td>
-                    <td>{{ appointment.patient.name }}</td>
-                    <td>{{ appointment.status }}</td>
+                <tr v-for="patient in patients" :key="patient.patient_id">
+                    <td>{{ patient.patient_id }}</td>
+                    <td>{{ patient.name }}</td>
+                    <td>{{ patient.age }}</td>
+                    <td>{{ patient.gender }}</td>
                     <td>
-                        <v-btn @click="goToPatient(appointment.patient.id)">View</v-btn>
+                        <v-btn @click="goToPatient(patient.patient_id)">View</v-btn>
                     </td>
                 </tr>
             </tbody>

@@ -44,7 +44,7 @@ def role_required(required_role):
 def blacklist_check(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        email = get_jwt_identity
+        email = get_jwt_identity()
         user = User.query.filter_by(email=email).one_or_none()
         
         if user.blacklisted:
@@ -1728,7 +1728,7 @@ def current_day_appointments():
         "pagination": {
             "page": todays_appointments.page,
             "per_page": todays_appointments.per_page,
-            "total": today_appointments.total
+            "total": todays_appointments.total
         }
     }
     
@@ -1825,6 +1825,33 @@ def doctor_assigned_patients():
     }
     return jsonify(response)
     
+@app.route("/api/doctor/<int:patient_id/details", methods=["GET"])
+@role.required("doctor")
+@blacklist_check
+def view_patient_details(patient_id):
+    patient = User.query.get_or_404(patient_id)
+    doctor = current_user.doctor
+    
+    pending_ipd_referral = Referrals.query.filter(
+        Referrals.patient_id == patient_id,
+        Referrals.referred_by_doctor_id == doctor.id,
+        Referrals.referral_type == ReferralTypeEnum.IPD,
+        Referrals.referral_status == ReferralStatusEnum.pending
+    ).first()
+    
+    return jsonify({
+        "patient_details": {
+            "id": patient.id,
+            "name": patient.username,
+            "age": patient.patient.age,
+            "gender": patient.patient.gender
+        },
+        "pending_ipd_referral": {
+            "id": pending_ipd_referral.id,
+            "status": pending_ipd_referral.referral_status,
+            "referred_to_doctor_name": pending_ipd_referral.referred_to.user.username if pending_ipd_referral.referred_to else None,
+        }
+    })
 
 @app.route("/api/doctor/view_patient_history/<int:patient_id>", methods=["GET"])
 @role_required("doctor")

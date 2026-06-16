@@ -59,6 +59,14 @@ const routes = [
       {
         path: 'appointments-today',
         component: () => import('../views/doctor/AppointmentsToday.vue')
+      },
+      {
+        path: 'assigned-patients',
+        component: () => import('../views/doctor/AssignedPatients.vue')
+      },
+      {
+        path: 'assigned-patients/:id',
+        component: () => import('../views/doctor/PatientDetails.vue')
       }
     ]
   }
