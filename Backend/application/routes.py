@@ -1825,8 +1825,8 @@ def doctor_assigned_patients():
     }
     return jsonify(response)
     
-@app.route("/api/doctor/<int:patient_id/details", methods=["GET"])
-@role.required("doctor")
+@app.route("/api/doctor/<int:patient_id>/details", methods=["GET"])
+@role_required("doctor")
 @blacklist_check
 def view_patient_details(patient_id):
     patient = User.query.get_or_404(patient_id)
@@ -1847,9 +1847,9 @@ def view_patient_details(patient_id):
             "gender": patient.patient.gender
         },
         "pending_ipd_referral": {
-            "id": pending_ipd_referral.id,
-            "status": pending_ipd_referral.referral_status,
-            "referred_to_doctor_name": pending_ipd_referral.referred_to.user.username if pending_ipd_referral.referred_to else None,
+            "id": pending_ipd_referral.id if pending_ipd_referral else None,
+            "status": pending_ipd_referral.referral_status if pending_ipd_referral else None,
+            "referred_to_doctor_name": pending_ipd_referral.referred_to.user.username if pending_ipd_referral else None,
         }
     })
 
