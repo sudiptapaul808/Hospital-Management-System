@@ -1853,11 +1853,11 @@ def view_patient_details(patient_id):
         }
     })
 
-@app.route("/api/doctor/view_patient_history/<int:patient_id>", methods=["GET"])
+@app.route("/api/doctor/<int:patient_id>/history", methods=["GET"])
 @role_required("doctor")
 @blacklist_check
 def view_patient_history(patient_id):
-    histories_page = int(request.args.get("histories_page", 1))
+    page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 10))
     
     patient = Patient.query.get_or_404(patient_id)
@@ -1878,7 +1878,7 @@ def view_patient_history(patient_id):
     }
     return jsonify(response)
     
-@app.route("/api/doctor/update_patient_history/<int:patient_id>", methods=["POST"])
+@app.route("/api/doctor/new/<int:patient_id>/history", methods=["POST"])
 @role_required("doctor")
 @blacklist_check
 def update_patient_history(patient_id):
@@ -1887,19 +1887,26 @@ def update_patient_history(patient_id):
     diagnosis = data.get("diagnosis")
     medicine = data.get("medicine")
     test_done = data.get("test_done", "")
+    #Get the department
+    department = data.get("department")
+    #Check if doctor belong to that department
+    #then make the history
 
     if not diagnosis or not medicine:
         return jsonify({"error": "Diagnosis and medicine are required"}), 400
 
     doctor = current_user.doctor
     doctor_id = doctor.id
+    
+    allowed_departments = [
+        dept.department_name for dept in doctor.departments
+    ]
 
-    if hasattr(doctor, "departments") and doctor.departments:
-        department = doctor.departments[0].department_name
-    else:
-        department = "General"
-
-    visit_type = "general"
+    if department not in allowed_departments:
+        return jsonify({"error": "You do not belong to this department"}), 403
+    
+    patient = Patient.query.get_or_404(patient_id)
+    visit_type = "IPD" if patient.is_admitted else "OPD"
 
     diagnosis_date = date.today()
 
@@ -1922,23 +1929,19 @@ def update_patient_history(patient_id):
 
         return jsonify({
             "message": "History added successfully",
-            "history": {
-                "id": new_history.id,
-                "patient_id": new_history.patient_id,
-                "doctor_id": new_history.doctor_id,
-                "department": new_history.department,
-                "visit_type": new_history.visit_type,
-                "test_done": new_history.test_done,
-                "diagnosis_date": str(new_history.diagnosis_date),
-                "diagnosis": new_history.diagnosis,
-                "medicine": new_history.medicine
-            }
         }), 201
 
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "Database error", "details": str(e)}), 500
-    
+
+@app.route("/api/doctor/departments", methods=["GET"])
+@role_required("doctor")
+@blacklist_check
+def departments_of_doctor():
+    doctor = current_user.doctor
+    departments = get_departments_belonging_to_a_doctor(doctor.id)
+    return jsonify(departments)
     
 @app.route("/api/appointments/status/<int:appointment_id>", methods=["PATCH"])
 @role_required("doctor")

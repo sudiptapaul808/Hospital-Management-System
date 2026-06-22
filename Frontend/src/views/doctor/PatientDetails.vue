@@ -5,6 +5,7 @@ import { onMounted, ref } from 'vue';
 import api from '../../services/api'
 import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue';
+import router from '../../router/index.js';
 
 const route = useRoute()
 const id = route.params.id
@@ -29,6 +30,11 @@ onMounted(() => {
     fetchDetails()
 })
 
+//View Patient History=========================================================================================
+const goToHistory = (id) => {
+    router.push(`/doctor/patient/${id}/history`)
+}
+
 </script>
 
 <template>
@@ -38,7 +44,7 @@ onMounted(() => {
             <v-btn
                 color="primary"
                 variant="tonal"
-                @click=""
+                @click="goToHistory(patientStore.patientDetails.id)"
             >
                 View History
             </v-btn>

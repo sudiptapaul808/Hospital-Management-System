@@ -33,6 +33,20 @@ def get_doctors_paginated(page, per_page):
         }
     }
     
+def get_departments_belonging_to_a_doctor(doctor_id):
+    doctor = Doctor.query.get_or_404(doctor_id)
+    if not doctor:
+        return {"error": "Doctor doesn't exist"}, 404
+    departments = doctor.departments
+    return {
+        "departments": [
+            {
+                "id": dept.id,
+                "name": dept.department_name
+            } for dept in departments
+        ]
+    }
+    
 def create_opd_referral(doctor, patient_id, dept_id, referred_to_doc_id):
     patient = Patient.query.get(patient_id)
     if not patient:

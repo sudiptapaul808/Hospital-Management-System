@@ -14,6 +14,7 @@ def get_patient_history(patient_id, page, per_page):
     return {
         "data": [
             {
+                "id": h.id,
                 "doctor_name": h.doctor.user.username,
                 "department": h.department,
                 "visit_type": h.visit_type,
