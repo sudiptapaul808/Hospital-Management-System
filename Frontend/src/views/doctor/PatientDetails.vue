@@ -6,6 +6,7 @@ import api from '../../services/api'
 import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue';
 import router from '../../router/index.js';
+import AddHistoryModal from '../../components/doctor/AddHistoryModal.vue';
 
 const route = useRoute()
 const id = route.params.id
@@ -35,6 +36,9 @@ const goToHistory = (id) => {
     router.push(`/doctor/patient/${id}/history`)
 }
 
+//Add patient History Modal Controls==================================================================================
+const showAddHistory = ref(false)
+
 </script>
 
 <template>
@@ -51,7 +55,7 @@ const goToHistory = (id) => {
             <v-btn
                 color="primary"
                 variant="tonal"
-                @click=""
+                @click="showAddHistory=true"
             >
                 Add History
             </v-btn>
@@ -85,5 +89,10 @@ const goToHistory = (id) => {
         >
             Refer Patient
         </v-btn>
+        <AddHistoryModal 
+            v-if="showAddHistory"
+            v-model="showAddHistory"
+            :patient-id="id"
+        />
     </div>
 </template>

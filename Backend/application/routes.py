@@ -1892,7 +1892,7 @@ def update_patient_history(patient_id):
     #Check if doctor belong to that department
     #then make the history
 
-    if not diagnosis or not medicine:
+    if not diagnosis or not medicine or not department:
         return jsonify({"error": "Diagnosis and medicine are required"}), 400
 
     doctor = current_user.doctor

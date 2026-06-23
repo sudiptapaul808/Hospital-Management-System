@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { ref } from 'vue'
 import api from '../../services/api'
 
@@ -8,7 +8,7 @@ const props = defineProps({
     patientId: Number
 })
 
-const emit = defineEmits(['update:modelValue', 'created'])
+const emit = defineEmits(['update:modelValue'])
 
 //History variables============================================================================================
 const error = ref('')
@@ -48,7 +48,7 @@ const addHistory = async() => {
             test_done: newHistory.value.test_done,
             department: newHistory.value.department
         })
-        emit('created')
+
         emit('update:modelValue', false)
 
         newHistory.value = {
@@ -67,7 +67,7 @@ const addHistory = async() => {
 //Fetching the departments the doctor belongs to===============================================================
 const departments = ref([])
 
-const fetchAdmittedPatients = async() => {
+const fetchDoctorDepartments = async() => {
     try {
         const res = await api.get(`/api/doctor/departments`)
         departments.value = res.data.departments
@@ -75,6 +75,10 @@ const fetchAdmittedPatients = async() => {
         console.log(err)
     }
 }
+
+onMounted(() => {
+    fetchDoctorDepartments()
+})
 </script>
 
 <template>
@@ -96,8 +100,28 @@ const fetchAdmittedPatients = async() => {
                         label="Tests done"
                         v-model="newHistory.test_done"
                     />
-                    
+                    <v-autocomplete 
+                        v-model="newHistory.department"
+                        :items="departments"
+                        item-title="department_name"
+                        item-value="department_name"
+                        label="Department"
+                        clearable
+                    />
+                <p v-if="error" class="text-red text-center">{{ error }}</p>
                 </v-card-text>
+                <v-card-actions>
+                    <v-btn text @click="handleClose(false)" variant="tonal">Close</v-btn>
+                    <v-btn
+                        color="secondary"
+                        variant="tonal" 
+                        :loading="loading"
+                        :disabled="loading"
+                        @click="addHistory"
+                    >
+                        Confirm
+                    </v-btn>
+                </v-card-actions>
             </v-card>
         </v-dialog>
     </div>

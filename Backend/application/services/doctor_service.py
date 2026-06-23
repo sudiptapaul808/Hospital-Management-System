@@ -42,7 +42,7 @@ def get_departments_belonging_to_a_doctor(doctor_id):
         "departments": [
             {
                 "id": dept.id,
-                "name": dept.department_name
+                "department_name": dept.department_name
             } for dept in departments
         ]
     }
