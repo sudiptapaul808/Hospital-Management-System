@@ -39,5 +39,15 @@ const route = useRoute()
                 <v-icon>mdi-bed</v-icon>
             </template>
         </v-list-item>
+        <v-list-item
+        active-color="white"
+        title="Availabilities"
+        to="/doctor/availabilities"
+        exact
+        >
+            <template #prepend>
+                <v-icon>mdi-calendar-clock</v-icon>
+            </template>
+        </v-list-item>
     </v-navigation-drawer>
 </template>

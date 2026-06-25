@@ -4,7 +4,6 @@ import api from '../../services/api'
 import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue';
 import router from '../../router/index.js';
-import { loadConfigFromFile } from 'vite';
 
 const route = useRoute()
 const id = route.params.id
@@ -59,9 +58,9 @@ const fetchHistories = async() => {
                 per_page: perPage.value
             }
         })
-        histories.value = res.data.histories.data.data
+        histories.value = res.data.histories.data
         patientName.value = res.data.patient_name
-        total.value = res.data.histories.data.pagination.total
+        total.value = res.data.histories.pagination.total
     } catch (err) {
         console.log(err)
     } finally {
@@ -75,7 +74,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div>
+    <div v-if="histories.length > 0">
         <v-row class="mb-3" align="center" justify="space-between">
             <v-col cols="auto">
                 <h2>{{ patientName }}'s Medical History'</h2>
@@ -128,5 +127,8 @@ onMounted(() => {
                 Next
             </v-btn>
         </v-row>
+    </div>
+    <div v-else>
+        No Previous Medical history available for {{ patientName }}.
     </div>
 </template>

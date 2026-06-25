@@ -1171,6 +1171,7 @@ def admin_edit_patient(patient_id):
         
         cache_delete_pattern("admin_patients_page_*")
         cache_delete_pattern("admin_opd_referrals_page_*")
+        cache_delete_pattern("admin_admitted_patients_page_*")
         
         return jsonify({
             "message": "Patient updated successfully"}), 200
@@ -1705,7 +1706,8 @@ def current_day_appointments():
         .filter(
             Appointment.doctor_id == doctor.id,
             Appointment.appointment_datetime >= start_of_day,
-            Appointment.appointment_datetime < end_of_day
+            Appointment.appointment_datetime < end_of_day,
+            Appointment.status == AppointmentStatusEnum.booked
         )
         .order_by(Appointment.appointment_datetime.asc())
         .paginate(page=page, per_page=per_page, error_out=False)
@@ -1870,7 +1872,7 @@ def view_patient_history(patient_id):
     if not has_appointment and not is_assigned:
         return jsonify({"message": "Unauthorized"}), 403
     
-    histories = get_patient_history(patient.id, histories_page, per_page)
+    histories = get_patient_history(patient.id, page, per_page)
     response = {
         "patient_id": patient.id,
         "patient_name": patient.user.username,
@@ -1935,6 +1937,7 @@ def update_patient_history(patient_id):
         db.session.rollback()
         return jsonify({"error": "Database error", "details": str(e)}), 500
 
+#This route is to get all the departments a doctor belongs to, for selecting department while adding histories
 @app.route("/api/doctor/departments", methods=["GET"])
 @role_required("doctor")
 @blacklist_check
@@ -1943,24 +1946,25 @@ def departments_of_doctor():
     departments = get_departments_belonging_to_a_doctor(doctor.id)
     return jsonify(departments)
     
-@app.route("/api/appointments/status/<int:appointment_id>", methods=["PATCH"])
+@app.route("/api/doctor/appointment/<int:appointment_id>/complete", methods=["PATCH"])
 @role_required("doctor")
 @blacklist_check
-def update_appointment_status(appointment_id):
+def mark_appointment_complete(appointment_id):
     data = request.get_json()
-    new_status = data.get("status")
-
-    valid_statuses = ["booked", "completed", "cancelled"]
-    if new_status not in valid_statuses:
-        return jsonify({"error": "Invalid status"}), 400
+    patient_id = data.get("patient_id")
+    
+    patient = Patient.query.get_or_404(patient_id)
+    doctor = current_user.doctor
     
     try:
         #“Change this appointment to completed only if it is still booked right now.” This is another concurrency control where a doctor might select completed and the patient might select cancelled depending on networks and other stuffs the later one gets saved. So instead of having the checks outside of the fetch, we literally embed it into the query that changes the status, we do it in real time so the time between check and execution isn't there, not even nano seconds. We do it real time. 
         rows = Appointment.query.filter(
             Appointment.id == appointment_id,
+            Appointment.patient_id == patient.id,
+            Appointment.doctor_id == doctor.id,
             Appointment.status == AppointmentStatusEnum.booked
         ).update({
-            "status": AppointmentStatusEnum[new_status]
+            "status": AppointmentStatusEnum.completed
         })
         db.session.commit()
         
@@ -1972,7 +1976,7 @@ def update_appointment_status(appointment_id):
         cache_delete("admin_summary")
         
         return jsonify({
-            "message": f"Appointment status updated to {new_status}",
+            "message": "Appointment marked as complete",
         }), 200
     except Exception:
         db.session.rollback()
@@ -2276,7 +2280,7 @@ def doctor_delete_availability(availability_id):
         db.session.rollback()
         return jsonify({"error": "error deleting slot"}), 500
 
-@app.route("/api/discharge_patient/<int:patient_id>", methods=["PATCH"])
+@app.route("/api/doctor/<int:patient_id>/discharge", methods=["PATCH"])
 @role_required("doctor")
 @blacklist_check
 def discharge_assigned_patient(patient_id):

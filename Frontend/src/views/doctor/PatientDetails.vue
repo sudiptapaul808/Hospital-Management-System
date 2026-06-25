@@ -7,6 +7,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue';
 import router from '../../router/index.js';
 import AddHistoryModal from '../../components/doctor/AddHistoryModal.vue';
+import DischargeModal from '../../components/doctor/DischargeModal.vue';
+import CompleteAppointmentModal from '../../components/doctor/CompleteAppointmentModal.vue';
 
 const route = useRoute()
 const id = route.params.id
@@ -16,6 +18,8 @@ const patientDetails = ref(null)
 const pendingIPDReferrals = ref([])
 
 const isAppointmetFlow = route.path.includes('appointments-today')
+
+const appointmentId = isAppointmetFlow ? route.query.appointment : null
 
 const fetchDetails = async() => {
     try {
@@ -38,6 +42,12 @@ const goToHistory = (id) => {
 
 //Add patient History Modal Controls==================================================================================
 const showAddHistory = ref(false)
+
+//Discharge Modal controls===============================================================================
+const showDischarge = ref(false)
+
+//Complete Appointment Modal controls=======================================================================
+const showComplete = ref(false)
 
 </script>
 
@@ -70,7 +80,7 @@ const showAddHistory = ref(false)
             v-if="isAppointmetFlow"
             color="primary"
             variant="tonal"
-            @click=""
+            @click="showComplete=true"
         >
             Complete Appointment
         </v-btn>
@@ -78,7 +88,7 @@ const showAddHistory = ref(false)
             v-else
             color="error"
             variant="tonal"
-            @click=""
+            @click="showDischarge=true"
         >
             Discharge patient
         </v-btn>
@@ -93,6 +103,17 @@ const showAddHistory = ref(false)
             v-if="showAddHistory"
             v-model="showAddHistory"
             :patient-id="id"
+        />
+        <DischargeModal 
+            v-if="showDischarge"
+            v-model="showDischarge"
+            :patient-id="id"
+        />
+        <CompleteAppointmentModal 
+            v-if="showComplete"
+            v-model="showComplete"
+            :patient-id="id"
+            :appointment-id="appointmentId"
         />
     </div>
 </template>

@@ -75,6 +75,10 @@ const routes = [
       {
         path: 'patient/:id/history',
         component: () => import('../views/doctor/ViewHistory.vue')
+      },
+      {
+        path: 'availabilities',
+        component: () => import('../views/doctor/Availabilities.vue')
       }
     ]
   }

@@ -77,7 +77,14 @@ const formatTime = (datatime) => {
     })
 }
 //Send to view patient page=================================================================================
-
+const goToPatient = (patientId, appointmentId) => {
+    router.push({
+        path: `/doctor/patient/${patientId}`,
+        query: {
+            appointment: appointmentId
+        }
+    })
+}
 </script>
 
 <template>
@@ -103,7 +110,7 @@ const formatTime = (datatime) => {
                     <td>{{ appointment.patient.name }}</td>
                     <td>{{ appointment.status }}</td>
                     <td>
-                        <v-btn @click="goToPatient(appointment.patient.id)">View</v-btn>
+                        <v-btn @click="goToPatient(appointment.patient.id, appointment.id)">View</v-btn>
                     </td>
                 </tr>
             </tbody>
