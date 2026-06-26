@@ -2074,7 +2074,7 @@ def get_doctor_availabilities_doctor_side():
             })
     return jsonify(data)
 
-@app.route("/api/doctor/availabilities_by_date", methods=["GET"])
+@app.route("/api/doctor/availability", methods=["GET"])
 @role_required("doctor")
 @blacklist_check
 def get_availabilities_by_date_doctor_side():
@@ -2162,7 +2162,7 @@ def doctor_create_availability():
     try:
         db.session.add(new_slot)
         db.session.commit()
-        return jsonify({"message": "Created", "id": new_slot.id}), 201
+        return jsonify({"message": "Slot created successfully"}), 201
     except IntegrityError:
         db.session.rollback()
         return jsonify({"error": "Slot already created"}), 409
