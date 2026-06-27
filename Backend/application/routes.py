@@ -2170,6 +2170,19 @@ def doctor_create_availability():
         db.session.rollback()
         return jsonify({"error": "Database error"}), 500
 
+@app.route("/api/doctor/availability/<int:availability_id>", methods=["GET"])
+@role_required("doctor")
+@blacklist_check
+def get_availability_by_id(availability_id):
+    slot = DoctorAvailability.query.get_or_404(availability_id)
+    return jsonify({
+        "id": slot.id,
+        "date": slot.date.isoformat(),
+        "start_time": slot.start_time.strftime("%H:%M"),
+        "end_time": slot.end_time.strftime("%H:%M"),
+        "department_id": slot.department_id
+    })
+
 @app.route("/api/doctor/availability/<int:availability_id>/update", methods=["PATCH"])
 @role_required("doctor")
 @blacklist_check

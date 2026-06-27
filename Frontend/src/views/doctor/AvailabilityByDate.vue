@@ -5,6 +5,8 @@ import router from '../../router/index.js';
 import { useRoute, useRouter } from 'vue-router'
 import CreateAvailabilityModal from '../../components/doctor/CreateAvailabilityModal.vue';
 import { propsFactory } from 'vuetify/lib/util/propsFactory.mjs';
+import Availabilities from './Availabilities.vue';
+import EditAvailabilityModal from '../../components/doctor/EditAvailabilityModal.vue';
 
 const route = useRoute()
 const date = route.params.date
@@ -19,7 +21,7 @@ const fetchDetails = async() => {
                 date: date
             }
         })
-        console.log(res)
+        availabilityDetails.value = res.data
     } catch (err) {
         console.log(err)
     }
@@ -34,6 +36,11 @@ const showCreate = ref(false)
 
 //edit availability============================================================================================
 const showEdit = ref(false)
+const availabilityId = ref(null)
+const openEdit = (id) => {
+    availabilityId.value = id
+    showEdit.value = true
+}
 
 //delete availability==========================================================================================
 const showDelete = ref(false)
@@ -70,7 +77,7 @@ const showDelete = ref(false)
                     <td>{{ availability.department_name }}</td>
                     <td>{{ availability.start_time }}</td>
                     <td>{{ availability.end_time }}</td>
-                    <td><v-btn @click="showEdit=true" variant="tonal">Edit</v-btn></td>
+                    <td><v-btn @click="openEdit(availability.id)"  variant="tonal">Edit</v-btn></td>
                     <td><v-btn @click="showDelete=true" color="seconday" variant="tonal">Delete</v-btn></td>
                 </tr>
             </tbody>
@@ -80,6 +87,12 @@ const showDelete = ref(false)
             v-model="showCreate"
             :date="date"
             @created="fetchDetails"
+        />
+        <EditAvailabilityModal 
+            v-if="showEdit"
+            v-model="showEdit"
+            :availability-id="availabilityId"
+            @updated="fetchDetails"
         />
     </div>
 </template>
