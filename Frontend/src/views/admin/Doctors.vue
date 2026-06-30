@@ -228,6 +228,11 @@ const blacklistDoctor = async() => {
   }
 }
 
+
+//Function to send to the availabilities page==================================================================
+const goToAvailabilities = (doctorId) => {
+  router.push(`/admin/doctor-availability/${doctorId}`)
+}
 </script>
 
 <template>
@@ -269,6 +274,14 @@ const blacklistDoctor = async() => {
                   @click="openBlacklistConfirm(doc)" 
                   :prepend-icon="doc.blacklisted ? 'mdi-check-circle' : 'mdi-cancel'"
               >{{ doc.blacklisted ? 'Unblacklist' : 'Blacklist' }}</v-btn>
+              <v-btn
+                size="small"
+                color="secondary"
+                variant="tonal"
+                @click="goToAvailabilities(doc.doctor_id)"
+              >
+                Availability
+              </v-btn>
             </div>
           </td>
         </tr>

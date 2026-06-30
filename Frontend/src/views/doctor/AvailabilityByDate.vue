@@ -7,6 +7,7 @@ import CreateAvailabilityModal from '../../components/doctor/CreateAvailabilityM
 import { propsFactory } from 'vuetify/lib/util/propsFactory.mjs';
 import Availabilities from './Availabilities.vue';
 import EditAvailabilityModal from '../../components/doctor/EditAvailabilityModal.vue';
+import DeleteAvailabilityModal from '../../components/doctor/DeleteAvailabilityModal.vue';
 
 const route = useRoute()
 const date = route.params.date
@@ -93,6 +94,12 @@ const showDelete = ref(false)
             v-model="showEdit"
             :availability-id="availabilityId"
             @updated="fetchDetails"
+        />
+        <DeleteAvailabilityModal 
+            v-if="showDelete"
+            v-model="showDelete"
+            :availability-id="availabilityId"
+            @deleted="fetchDetails"
         />
     </div>
 </template>

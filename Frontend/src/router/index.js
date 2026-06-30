@@ -44,6 +44,14 @@ const routes = [
       {
         path: 'admitted-patients',
         component: () => import('../views/admin/AdmittedPatients.vue')
+      },
+      {
+        path: 'doctor-availability/:doctorId', //This id is doctor id, cause we fetch the main availabilities list with the doctor's id
+        component: () => import('../views/admin/DoctorAvailability.vue')
+      },
+      {
+        path: 'doctor-availability/:doctorId/:date', //This id is doctor id, and a specific date of that doctor's availability
+        component: () => import('../views/admin/AvailabilityByDateAdminSide.vue')
       }
     ]
   },

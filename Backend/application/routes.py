@@ -466,9 +466,15 @@ def get_doctor_availabilities(doctor_id):
                 "date": date.isoformat(),
                 "status": "not set"
             })
-    return jsonify(data)
+    return jsonify({
+        "doctor": {
+            "id": doctor.id,
+            "name": doctor.user.username
+        },
+        "availability": data
+    })
 
-@app.route("/api/admin/<int:doctor_id>/availabilities_by_date", methods=["GET"])
+@app.route("/api/admin/<int:doctor_id>/availability", methods=["GET"])
 @role_required("admin")
 def get_availabilities_by_date(doctor_id):
     doctor = Doctor.query.get_or_404(doctor_id)
@@ -491,8 +497,6 @@ def get_availabilities_by_date(doctor_id):
     data = [
         {
             "id": a.id,
-            "doctor_id": a.doctor_id,
-            "doctor_name": a.doctor.user.username,
             "department_id": a.department_id,
             "department_name": a.department.department_name,
             "date": a.date.isoformat(),
@@ -501,7 +505,13 @@ def get_availabilities_by_date(doctor_id):
         } for a in availabilities
     ]
     
-    return jsonify(data)
+    return jsonify({
+        "doctor": {
+            "id": doctor.id,
+            "name": doctor.user.username
+        },
+        "availabilities_for_the_day": data
+    })
         
 
 @app.route("/api/add_department", methods=["POST"])
@@ -759,168 +769,168 @@ def delete_doctor(doctor_id):
             "details": str(e)
         }), 500
 
-@app.route("/api/admin/availability/<int:doctor_id>/create", methods=["POST"])
-@role_required("admin")
-def create_availability(doctor_id):
-    data = request.json
+# @app.route("/api/admin/availability/<int:doctor_id>/create", methods=["POST"])
+# @role_required("admin")
+# def create_availability(doctor_id):
+#     data = request.json
     
-    doctor = Doctor.query.get_or_404(doctor_id)
+#     doctor = Doctor.query.get_or_404(doctor_id)
     
-    date_str = data.get("date")
-    start_time_str = data.get("start_time")
-    end_time_str = data.get("end_time")
-    selected_department = data.get("selected_department")
+#     date_str = data.get("date")
+#     start_time_str = data.get("start_time")
+#     end_time_str = data.get("end_time")
+#     selected_department = data.get("selected_department")
     
-    if not all([date_str, start_time_str, end_time_str, selected_department]):
-        return jsonify({"error": "Missing required fields"}), 400
+#     if not all([date_str, start_time_str, end_time_str, selected_department]):
+#         return jsonify({"error": "Missing required fields"}), 400
     
-    try: #this is for if the payload for any date is sent like "banana" or something like that, then the route will break if we directly use strptime
-        date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        start_time = datetime.strptime(start_time_str, "%H:%M").time()
-        end_time = datetime.strptime(end_time_str, "%H:%M").time()
-    except ValueError:
-        return jsonify({"error": "Invalid date or time format"}), 400
+#     try: #this is for if the payload for any date is sent like "banana" or something like that, then the route will break if we directly use strptime
+#         date = datetime.strptime(date_str, "%Y-%m-%d").date()
+#         start_time = datetime.strptime(start_time_str, "%H:%M").time()
+#         end_time = datetime.strptime(end_time_str, "%H:%M").time()
+#     except ValueError:
+#         return jsonify({"error": "Invalid date or time format"}), 400
     
-    if end_time <= start_time:
-        return jsonify({"error": "End time must be later than start time"}), 400
+#     if end_time <= start_time:
+#         return jsonify({"error": "End time must be later than start time"}), 400
     
-    department = SpecializationDept.query.get_or_404(selected_department)
+#     department = SpecializationDept.query.get_or_404(selected_department)
     
-    if department not in doctor.departments:
-        return jsonify({"error": "The doctor doesn't belong from the selected department"}), 400
+#     if department not in doctor.departments:
+#         return jsonify({"error": "The doctor doesn't belong from the selected department"}), 400
     
-    existing = DoctorAvailability.query.filter(
-        DoctorAvailability.doctor_id == doctor.id,
-        DoctorAvailability.date == date,
-        DoctorAvailability.start_time < end_time,
-        DoctorAvailability.end_time > start_time,
-    ).first()
+#     existing = DoctorAvailability.query.filter(
+#         DoctorAvailability.doctor_id == doctor.id,
+#         DoctorAvailability.date == date,
+#         DoctorAvailability.start_time < end_time,
+#         DoctorAvailability.end_time > start_time,
+#     ).first()
     
-    if existing:
-        return jsonify({"error": "Doctor already has availability in another department during this time"}), 409
+#     if existing:
+#         return jsonify({"error": "Doctor already has availability in another department during this time"}), 409
     
-    new_slot = DoctorAvailability(
-        doctor_id=doctor_id,
-        department_id=department.id,
-        date=date,
-        start_time=start_time,
-        end_time=end_time
-        )
+#     new_slot = DoctorAvailability(
+#         doctor_id=doctor_id,
+#         department_id=department.id,
+#         date=date,
+#         start_time=start_time,
+#         end_time=end_time
+#         )
 
-    try:
-        db.session.add(new_slot)
-        db.session.commit()
-        return jsonify({"message": "New slot created"}), 201
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"error": "Slot already created"}), 409
-    except Exception:
-        db.session.rollback()
-        return jsonify({"error": "Database error"}), 500
+#     try:
+#         db.session.add(new_slot)
+#         db.session.commit()
+#         return jsonify({"message": "New slot created"}), 201
+#     except IntegrityError:
+#         db.session.rollback()
+#         return jsonify({"error": "Slot already created"}), 409
+#     except Exception:
+#         db.session.rollback()
+#         return jsonify({"error": "Database error"}), 500
 
-@app.route("/api/admin/availability/<int:availability_id>/update", methods=["PATCH"])
-@role_required("admin")
-def update_availability(availability_id):
-    slot = DoctorAvailability.query.get_or_404(availability_id)
+# @app.route("/api/admin/availability/<int:availability_id>/update", methods=["PATCH"])
+# @role_required("admin")
+# def update_availability(availability_id):
+#     slot = DoctorAvailability.query.get_or_404(availability_id)
     
-    data = request.json
+#     data = request.json
     
-    start_time_str = data.get("start_time")
-    end_time_str = data.get("end_time")
-    selected_department = data.get("selected_department")
+#     start_time_str = data.get("start_time")
+#     end_time_str = data.get("end_time")
+#     selected_department = data.get("selected_department")
     
-    start_time = slot.start_time
-    end_time = slot.end_time
+#     start_time = slot.start_time
+#     end_time = slot.end_time
 
-    if start_time_str:
-        try:
-            start_time = datetime.strptime(start_time_str, "%H:%M").time()
-        except ValueError:
-            return jsonify({"error": "Invalid start time format"}), 400
-    if end_time_str:
-        try:
-            end_time = datetime.strptime(end_time_str, "%H:%M").time()
-        except ValueError:
-            return jsonify({"error": "Invalid end time format"}), 400
+#     if start_time_str:
+#         try:
+#             start_time = datetime.strptime(start_time_str, "%H:%M").time()
+#         except ValueError:
+#             return jsonify({"error": "Invalid start time format"}), 400
+#     if end_time_str:
+#         try:
+#             end_time = datetime.strptime(end_time_str, "%H:%M").time()
+#         except ValueError:
+#             return jsonify({"error": "Invalid end time format"}), 400
     
-    if end_time <= start_time:
-        return jsonify({"error": "End time must be later than start time"}), 400
+#     if end_time <= start_time:
+#         return jsonify({"error": "End time must be later than start time"}), 400
     
-    start_dt = datetime.combine(slot.date, start_time)
-    end_dt = datetime.combine(slot.date, end_time)
+#     start_dt = datetime.combine(slot.date, start_time)
+#     end_dt = datetime.combine(slot.date, end_time)
 
-    conflict = Appointment.query.filter(
-        Appointment.doctor_id == slot.doctor_id,
-        Appointment.appointment_datetime >= start_dt,
-        Appointment.appointment_datetime < end_dt,
-        Appointment.department_id == slot.department_id,
-        Appointment.status == AppointmentStatusEnum.booked
-    ).first()
+#     conflict = Appointment.query.filter(
+#         Appointment.doctor_id == slot.doctor_id,
+#         Appointment.appointment_datetime >= start_dt,
+#         Appointment.appointment_datetime < end_dt,
+#         Appointment.department_id == slot.department_id,
+#         Appointment.status == AppointmentStatusEnum.booked
+#     ).first()
 
-    if conflict:
-        return jsonify({
-            "error": "Cannot update availability because booked appointments exist for this date"
-        }), 400
+#     if conflict:
+#         return jsonify({
+#             "error": "Cannot update availability because booked appointments exist for this date"
+#         }), 400
     
-    existing = DoctorAvailability.query.filter(
-        DoctorAvailability.doctor_id == slot.doctor.id,
-        DoctorAvailability.date == slot.date,
-        DoctorAvailability.start_time < end_time,
-        DoctorAvailability.end_time > start_time,
-        DoctorAvailability.id != slot.id #So that it doesn't detect itself!
-    ).first()
+#     existing = DoctorAvailability.query.filter(
+#         DoctorAvailability.doctor_id == slot.doctor.id,
+#         DoctorAvailability.date == slot.date,
+#         DoctorAvailability.start_time < end_time,
+#         DoctorAvailability.end_time > start_time,
+#         DoctorAvailability.id != slot.id #So that it doesn't detect itself!
+#     ).first()
     
-    if existing: #This check is for making sure the doctor is not set to be in two departments at once. This includes overlapping times or the same time but different departments
-        return jsonify({"error": "Doctor already has availability in another department during this time"}), 409
+#     if existing: #This check is for making sure the doctor is not set to be in two departments at once. This includes overlapping times or the same time but different departments
+#         return jsonify({"error": "Doctor already has availability in another department during this time"}), 409
     
-    slot.start_time = start_time
-    slot.end_time = end_time
-    if selected_department:
-        department = SpecializationDept.query.get_or_404(selected_department)
+#     slot.start_time = start_time
+#     slot.end_time = end_time
+#     if selected_department:
+#         department = SpecializationDept.query.get_or_404(selected_department)
         
-        if department not in slot.doctor.departments:
-            return jsonify({"error": "Doctor doesn't belong from the selected department"}), 409
+#         if department not in slot.doctor.departments:
+#             return jsonify({"error": "Doctor doesn't belong from the selected department"}), 409
         
-        slot.department_id = department.id
+#         slot.department_id = department.id
         
-    try:
-        db.session.commit()
-        return jsonify({"message": "Updated"}), 200 
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"error": "Slot already created"}), 409
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": "Database error"}), 500
+#     try:
+#         db.session.commit()
+#         return jsonify({"message": "Updated"}), 200 
+#     except IntegrityError:
+#         db.session.rollback()
+#         return jsonify({"error": "Slot already created"}), 409
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({"error": "Database error"}), 500
 
-@app.route("/api/admin/availability/<int:availability_id>/delete", methods=["DELETE"])
-@role_required("admin")
-def delete_availability(availability_id):
-    slot = DoctorAvailability.query.get_or_404(availability_id)
+# @app.route("/api/admin/availability/<int:availability_id>/delete", methods=["DELETE"])
+# @role_required("admin")
+# def delete_availability(availability_id):
+#     slot = DoctorAvailability.query.get_or_404(availability_id)
     
-    start_dt = datetime.combine(slot.date, slot.start_time)
-    end_dt = datetime.combine(slot.date, slot.end_time)
+#     start_dt = datetime.combine(slot.date, slot.start_time)
+#     end_dt = datetime.combine(slot.date, slot.end_time)
 
-    conflict = Appointment.query.filter(
-        Appointment.doctor_id == slot.doctor_id,
-        Appointment.appointment_datetime >= start_dt,
-        Appointment.appointment_datetime < end_dt,
-        Appointment.department_id == slot.department_id,
-        Appointment.status == AppointmentStatusEnum.booked
-    ).first()
+#     conflict = Appointment.query.filter(
+#         Appointment.doctor_id == slot.doctor_id,
+#         Appointment.appointment_datetime >= start_dt,
+#         Appointment.appointment_datetime < end_dt,
+#         Appointment.department_id == slot.department_id,
+#         Appointment.status == AppointmentStatusEnum.booked
+#     ).first()
 
-    if conflict:
-        return jsonify({
-            "error": "Cannot delete availability because booked appointments exist"
-        }), 400
+#     if conflict:
+#         return jsonify({
+#             "error": "Cannot delete availability because booked appointments exist"
+#         }), 400
     
-    try:
-        db.session.delete(slot)
-        db.session.commit()
-        return jsonify({"message": "Slot deleted successfully"}), 200
-    except Exception:
-        db.session.rollback()
-        return jsonify({"error": "error deleting slot"}), 500
+#     try:
+#         db.session.delete(slot)
+#         db.session.commit()
+#         return jsonify({"message": "Slot deleted successfully"}), 200
+#     except Exception:
+#         db.session.rollback()
+#         return jsonify({"error": "error deleting slot"}), 500
 
 
 #This route will return - 1) Histories from history services 
