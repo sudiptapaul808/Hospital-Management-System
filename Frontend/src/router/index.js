@@ -13,6 +13,11 @@ const routes = [
     component: () => import('../views/Login.vue')
   },
   {
+    path: '/register',
+    name: 'register',
+    component: () => import('../views/patient/Registration.vue')
+  },
+  {
     path: '/admin',
     component: () => import('../layouts/AdminLayout.vue'),
     meta: { requiresAuth: true },
@@ -91,6 +96,25 @@ const routes = [
       {
         path: 'availabilities/:date',
         component: () => import('../views/doctor/AvailabilityByDate.vue')
+      }
+    ]
+  }, 
+  {
+    path: '/patient',
+    component: () => import('../layouts/PatientLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        component: () => import('../views/patient/PatientDashboard.vue')
+      },
+      {
+        path: 'upcoming-appointments',
+        component: () => import('../views/patient/UpcomingAppointments.vue')
+      },
+      {
+        path: 'departments',
+        component: () => import('../views/patient/Departments.vue')
       }
     ]
   }

@@ -22,10 +22,17 @@ const handleLogin = async () => {
             router.push('/admin')
         } else if (res.data.role === 'doctor') {
             router.push('/doctor')
+        } else if (res.data.role === 'patient') {
+            router.push('/patient')
         }
     } catch (err) {
-        error.value = 'Invalid Credentials'
+        error.value = err.response?.data?.error || "Something went wrong"
     }
+}
+
+//Send the user to the registration page===================================================================
+const goToRegister = () => {
+    router.push('/register')
 }
 </script>
 <template>
@@ -34,9 +41,9 @@ const handleLogin = async () => {
 
         <input v-model="email" placeholder="Email" />
         <input v-model="password" type="password" placeholder="Password" />
-
-        <button @click="handleLogin">Login</button>
-
         <p v-if="error">{{ error }}</p>
+        <button @click="handleLogin">Login</button>
+        <p>New Patient?</p>
+        <button @click="goToRegister">Register</button>
     </div>
 </template>

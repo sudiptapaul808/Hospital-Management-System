@@ -1049,15 +1049,23 @@ def admin_view_patient(patient_id):
 def admin_add_patient():
     data = request.json
     
-    username = data.get("username")
-    email = data.get("email")
-    password = data.get("password")
-    age = data.get("age")
-    gender = data.get("gender")
+    username = data.get("username", "").strip()
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
+    age = data.get("age", "").strip()
+    gender = data.get("gender", "").strip()
     admission = bool(data.get("admission", False))#this is false by default and True if the user selects yes
     
     if not username or not email or not password or not age or not gender:
         return jsonify({"error": "Missing required field(s)"}), 400
+    
+    try:
+        age = int(age)
+    except ValueError:
+        return jsonify({"error": "Invalid age"}), 400
+    
+    if age < 0:
+        return jsonify({"error": "Invalid age"}), 400
     
     existing_patient = User.query.filter_by(email=email).first()
     if existing_patient:
@@ -1149,6 +1157,14 @@ def admin_edit_patient(patient_id):
     
     if age is None:
         return jsonify({"error": "Age required"}), 400
+    
+    try:
+        age = int(age)
+    except ValueError:
+        return jsonify({"error": "Invalid age"}), 400
+    
+    if age < 0:
+        return jsonify({"error": "Invalid age"}), 400
     
     if not gender or gender.strip() == "":
         return jsonify({"error": "Gender required"}), 400
@@ -2360,14 +2376,22 @@ def refer_IPD_patients(patient_id):
 def patient_registration():
     data = request.json
     
-    username = data.get("username")
-    email = data.get("email")
-    password = data.get("password")
-    age = data.get("age")
-    gender = data.get("gender")
+    username = data.get("username", "").strip()
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
+    age = data.get("age", "").strip()
+    gender = data.get("gender", "").strip()
     
     if not username or not email or not password or not age or not gender:
         return jsonify({"error": "Missing required field"}), 400
+    
+    try:
+        age = int(age)
+    except ValueError:
+        return jsonify({"error": "Invalid age"}), 400
+    
+    if age < 0:
+        return jsonify({"error": "Invalid age"}), 400
     
     existing_patient = User.query.filter_by(email=email).first()
     if existing_patient:
@@ -2396,12 +2420,7 @@ def patient_registration():
         return jsonify({"error": "Failed to register", "details": str(e)}), 500
     
     return jsonify({
-        "message": "registration done successfully, login to continue",
-        "patient": {
-            "id": new_user.id,
-            "username": new_user.username,
-            "email": new_user.email,
-        }
+        "message": "registration done successfully, login to continue"
     }), 201
     
 @app.route("/api/patient/edit_patient", methods=["PATCH"])
@@ -2457,13 +2476,13 @@ def edit_patient():
 @blacklist_check
 def patient_dashboard():
     patient = current_user.patient
-
     return jsonify({
         "patient": {
             "id": patient.id,
             "name": patient.user.username,
             "email": patient.user.email,
-            "admission_status": "Admitted" if patient.is_admitted else "OPD"
+            "admission_status": "IPD" if patient.is_admitted else "OPD",
+            "assigned_doctor": patient.assigned_to.doctor.user.username if patient.assigned_to else None
         }
     }), 200
     
@@ -2533,7 +2552,7 @@ def patient_dash_appointments_tab():
 @role_required("patient")
 @blacklist_check
 def patient_dash_departments_tab():
-    departments_page = int(request.args.get("departments_page", 1))
+    departments_page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 10))
     
     cache_key = f"patient_departments_page_{departments_page}_per_{per_page}"
@@ -2843,7 +2862,7 @@ def cancel_appointment(appointment_id):
     except Exception:
         db.session.rollback()
         return jsonify({"message": "Couldn't cancel the appointment"}), 500
-    
+
 @app.route("/api/patient/book", methods=["PATCH"])
 @role_required("patient")
 @blacklist_check
