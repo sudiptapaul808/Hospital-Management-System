@@ -56,7 +56,6 @@ const fetchAdmittedPatients = async() => {
                 per_page: perPage.value
             }
         })
-        console.log("FETCHING ADMITTED PATIENTS")
         patients.value = res.data.patients
         total.value = res.data.pagination.total
     } catch (err) {

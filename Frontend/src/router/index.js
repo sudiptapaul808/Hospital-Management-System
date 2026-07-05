@@ -115,6 +115,14 @@ const routes = [
       {
         path: 'departments',
         component: () => import('../views/patient/Departments.vue')
+      },
+      {
+        path: 'departments/:id',
+        component: () => import('../views/patient/DepartmentDetails.vue')
+      },
+      {
+        path: 'doctor-details/:id',
+        component: () => import('../views/patient/DoctorDetails.vue')
       }
     ]
   }

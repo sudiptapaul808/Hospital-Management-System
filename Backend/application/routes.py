@@ -2622,6 +2622,17 @@ def patient_dash_history_tab():
     
     return jsonify(response)
 
+@app.route("/api/patient/department/<int:department_id>/details", methods=["GET"])
+@role_required("patient")
+@blacklist_check
+def department_details(department_id):
+    department = SpecializationDept.query.get_or_404(department_id)
+    return jsonify({
+        "id": department.id,
+        "department_name": department.department_name,
+        "description": department.description
+    }), 200
+
 @app.route("/api/patient/list_doctors/<int:department_id>", methods=["GET"])
 @role_required("patient")
 @blacklist_check
@@ -2634,7 +2645,7 @@ def patient_doctors_from_the_department(department_id):
     
     return jsonify(response)
 
-@app.route("/api/patient/doctor_details/<int:doctor_id>", methods=["GET"])
+@app.route("/api/patient/doctor/<int:doctor_id>/details", methods=["GET"])
 @role_required("patient")
 @blacklist_check
 def doctor_details(doctor_id):
