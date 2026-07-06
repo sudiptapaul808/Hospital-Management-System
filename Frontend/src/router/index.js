@@ -123,6 +123,18 @@ const routes = [
       {
         path: 'doctor-details/:id',
         component: () => import('../views/patient/DoctorDetails.vue')
+      },
+      {
+        path: 'view-availabilities/:doctorId',
+        component: () => import('../views/patient/ViewAvailabilities.vue')
+      },
+      {
+        path: 'availability/:doctorId/:date',
+        component: () => import('../views/patient/AvailabilityByDate.vue')
+      },
+      {
+        path: 'slots/:availabilityId',
+        component: () => import('../views/patient/AvailabilitySlots.vue')
       }
     ]
   }

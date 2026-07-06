@@ -2759,7 +2759,13 @@ def get_doctor_availabilities_patient_side(doctor_id):
                 "date": date.isoformat(),
                 "status": "not set"
             })
-    return jsonify(data)
+    return jsonify({
+        "doctor": {
+            "id": doctor.id,
+            "name": doctor.user.username
+        },
+        "availabilities": data
+    })
 
 @app.route("/api/patient/<int:doctor_id>/availabilities_by_date", methods=["GET"])
 @role_required("patient")
@@ -2785,8 +2791,6 @@ def get_availabilities_by_date_patient_side(doctor_id):
     data = [
         {
             "id": a.id,
-            "doctor_id": a.doctor_id,
-            "doctor_name": a.doctor.user.username,
             "department_id": a.department_id,
             "department_name": a.department.department_name,
             "date": a.date.isoformat(),
@@ -2795,7 +2799,13 @@ def get_availabilities_by_date_patient_side(doctor_id):
         } for a in availabilities
     ]
     
-    return jsonify(data)
+    return jsonify({
+        "doctor": {
+            "id": doctor.id,
+            "name": doctor.user.username,
+        },
+        "availability_details": data
+    })
 
 @app.route("/api/patient/availability/<int:availability_id>/slots", methods=["GET"])
 @role_required("patient")
@@ -2834,13 +2844,16 @@ def get_availability_slots_patient_side(availability_id):
             "status": "booked" if is_booked else "available"
         })
         current = next_slot
-    
+        
     return jsonify({
-        "doctor_name": doctor.user.username,
-        "department_name": department.department_name,
-        "date": availability.date.isoformat(),
-        "start_time": availability.start_time.strftime("%H:%M"),
-        "end_time": availability.end_time.strftime("%H:%M"),
+        "slot_details": {
+            "doctor_id": doctor.id
+            "doctor_name": doctor.user.username,
+            "department_name": department.department_name,
+            "date": availability.date.isoformat(),
+            "start_time": availability.start_time.strftime("%H:%M"),
+            "end_time": availability.end_time.strftime("%H:%M")
+        },
         "slots": slots
     })
 

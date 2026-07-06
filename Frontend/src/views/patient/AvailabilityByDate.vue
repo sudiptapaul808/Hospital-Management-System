@@ -1,26 +1,26 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import api from '../../services/api'
-import router from '../../router/index.js';
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
+
 const doctorId = route.params.doctorId
 const date = route.params.date
-
 const doctorName = ref('')
 
-const availabilitiesDetails = ref([])
+const availabilityDetails = ref([])
 
-//Fetch Details=================================================================================================
 const fetchDetails = async() => {
     try {
-        const res = await api.get(`/api/admin/${doctorId}/availability`, {
+        const res = await api.get(`/api/patient/${doctorId}/availabilities_by_date`,{
             params: {
                 date: date
             }
         })
-        availabilitiesDetails.value = res.data.availabilities_for_the_day
+        console.log(res)
+        availabilityDetails.value = res.data.availability_details
         doctorName.value = res.data.doctor.name
     } catch (err) {
         console.log(err)
@@ -30,6 +30,10 @@ const fetchDetails = async() => {
 onMounted(() => {
     fetchDetails()
 })
+
+const goToSlots = (availabilityId) => {
+    router.push(`/patient/slots/${availabilityId}`)
+}
 </script>
 
 <template>
@@ -49,11 +53,12 @@ onMounted(() => {
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="availability in availabilitiesDetails" :key="availability.id">
+                <tr v-for="availability in availabilityDetails" :key="availability.id">
                     <td>{{ availability.date }}</td>
                     <td>{{ availability.department_name }}</td>
                     <td>{{ availability.start_time }}</td>
                     <td>{{ availability.end_time }}</td>
+                    <td><v-btn @click="goToSlots(availability.id)" color="secondary">Check slot</v-btn></td>
                 </tr>
             </tbody>
         </v-table>
