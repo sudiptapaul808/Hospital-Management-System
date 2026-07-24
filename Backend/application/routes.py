@@ -1403,7 +1403,7 @@ def check_ipd_referral(referral_id):
         joinedload(Referrals.patient).joinedload(Patient.user),
         joinedload(Referrals.referred_by).joinedload(Doctor.user).joinedload(Doctor.departments),
         joinedload(Referrals.referred_to).joinedload(Doctor.user),
-        joinedload(referrals.department)
+        joinedload(Referrals.department)
     ).filter_by(id=referral_id).first_or_404()
     
     if referral.referral_type != ReferralTypeEnum.IPD or referral.referral_status != ReferralStatusEnum.pending:
@@ -2285,7 +2285,7 @@ def doctor_update_availability(availability_id):
         db.session.rollback()
         return jsonify({"error": "Database error"}), 500
 
-@app.route("/api/doctor/availability/<int:availability_d>/delete", methods=["DELETE"])
+@app.route("/api/doctor/availability/<int:availability_id>/delete", methods=["DELETE"])
 @role_required("doctor")
 @blacklist_check
 def doctor_delete_availability(availability_id):
@@ -2898,27 +2898,23 @@ def book():
     referral_id = data.get("referral_id")
     
     appointment_datetime = datetime.fromisoformat(appointment_datetime_str)
-    
-    print(appointment_datetime.time())
-    
-    appointment_datetime = datetime.fromisoformat(appointment_datetime_str)
+
     referral = None
     new_appointment = None
+
+    availability = DoctorAvailability.query.filter_by(
+        doctor_id=doctor_id,
+        date=appointment_datetime.date()
+    ).first()    
+
+    if not availability:
+        return jsonify({"error": "Doctor not available on this date"}), 400
+
+    if not (availability.start_time <= appointment_datetime.time() < availability.end_time):
+        return jsonify({"error": "Doctor not available at this time"}), 400
+
+
     if not referral_id:
-        availability = DoctorAvailability.query.filter_by(
-            doctor_id=doctor_id,
-            date=appointment_datetime.date()
-        ).first()
-        
-        if not availability:
-            return jsonify({"error": "Doctor not available on this date"}), 400
-        
-        print("a start", availability.start_time)
-        print("a end", availability.end_time)
-        
-        if not (availability.start_time <= appointment_datetime.time() < availability.end_time):
-            return jsonify({"error": "Doctor not available at this time"}), 400
-        
         if patient.is_admitted:
             return jsonify({"error": "IPD patients cannot book"}), 400
     else:
@@ -2932,23 +2928,14 @@ def book():
             return jsonify({"error": "Referral not found or invalid"}), 404
         if referral.referred_to_doctor_id and referral.referred_to_doctor_id != doctor_id:
             return jsonify({"error": "Doctor doesn't match referral"}), 400
-        
-        availability = DoctorAvailability.query.filter_by(
-            doctor_id=doctor_id,
-            date=appointment_datetime.date()
-        ).first()
-        if not availability:
-            return jsonify({"error": "Doctor not available on this date"}), 400
-        
-        if not (availability.start_time <= appointment_datetime.time() < availability.end_time):
-            return jsonify({"error": "Doctor not available at this time"}), 400
     
     #Now commit everything at once         
     new_appointment = Appointment(
         doctor_id=doctor_id,
         patient_id=patient.id,
         appointment_datetime=appointment_datetime,
-        status=AppointmentStatusEnum.booked
+        status=AppointmentStatusEnum.booked,
+        department_id=availability.department_id
     )
     if referral:
         referral.referral_status = ReferralStatusEnum.completed

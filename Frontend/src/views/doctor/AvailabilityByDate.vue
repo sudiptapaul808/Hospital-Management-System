@@ -45,6 +45,10 @@ const openEdit = (id) => {
 
 //delete availability==========================================================================================
 const showDelete = ref(false)
+const openDelete = (id) => {
+    availabilityId.value = id,
+    showDelete.value = true
+}
 </script>
 
 <template>
@@ -79,7 +83,7 @@ const showDelete = ref(false)
                     <td>{{ availability.start_time }}</td>
                     <td>{{ availability.end_time }}</td>
                     <td><v-btn @click="openEdit(availability.id)"  variant="tonal">Edit</v-btn></td>
-                    <td><v-btn @click="showDelete=true" color="seconday" variant="tonal">Delete</v-btn></td>
+                    <td><v-btn @click="openDelete(availability.id)" color="seconday" variant="tonal">Delete</v-btn></td>
                 </tr>
             </tbody>
         </v-table>
