@@ -71,11 +71,13 @@ const bookModalOpen = (slot) => {
                     @click="bookModalOpen(slot)"
                 >
                     {{ slot.start_time }} - {{ slot.end_time }}
+                    <span v-if="slot.status === 'booked'">(Booked)</span>
                 </v-btn>
             </v-col>
         </v-row>
         <BookModal 
             v-if="book"
+            :model-value="book"
             :doctor-id="slotDetails.doctor_id"
             :slot="selectedSlot"
             :date="slotDetails.date"

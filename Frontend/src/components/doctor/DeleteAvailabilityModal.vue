@@ -41,6 +41,7 @@ const deleteAvailability = async() => {
         @update:modelValue="handleClose" max-width="400">
             <v-card rounded="lg">
                 <v-card-title>Delete Availability?</v-card-title>
+                <p v-if="error" class="text-red text-center">{{ error }}</p>
                 <v-card-actions>
                     <v-btn text @click="handleClose(false)" variant="tonal">Close</v-btn>
                     <v-btn

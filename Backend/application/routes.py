@@ -2847,7 +2847,7 @@ def get_availability_slots_patient_side(availability_id):
         
     return jsonify({
         "slot_details": {
-            "doctor_id": doctor.id
+            "doctor_id": doctor.id,
             "doctor_name": doctor.user.username,
             "department_name": department.department_name,
             "date": availability.date.isoformat(),
@@ -2898,6 +2898,10 @@ def book():
     referral_id = data.get("referral_id")
     
     appointment_datetime = datetime.fromisoformat(appointment_datetime_str)
+    
+    print(appointment_datetime.time())
+    
+    appointment_datetime = datetime.fromisoformat(appointment_datetime_str)
     referral = None
     new_appointment = None
     if not referral_id:
@@ -2909,9 +2913,14 @@ def book():
         if not availability:
             return jsonify({"error": "Doctor not available on this date"}), 400
         
+        print("a start", availability.start_time)
+        print("a end", availability.end_time)
+        
         if not (availability.start_time <= appointment_datetime.time() < availability.end_time):
             return jsonify({"error": "Doctor not available at this time"}), 400
         
+        if patient.is_admitted:
+            return jsonify({"error": "IPD patients cannot book"}), 400
     else:
         referral = Referrals.query.filter(
             Referrals.id == referral_id,
@@ -2956,9 +2965,14 @@ def book():
             "message": "Appointment booked successfully",
         }), 201
     
-    except IntegrityError:
+    except IntegrityError as e:
         db.session.rollback()
         
+        print("-" * 60)
+        print(e.orig)
+        print("-" * 60)
+        
+        print(repr(e.orig))
         error_message = str(e.orig)
 
         if "unique_doctor_slot" in error_message:
