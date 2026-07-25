@@ -2495,7 +2495,8 @@ def patient_dash_appointments_tab():
     
     appointments = Appointment.query.options(
         joinedload(Appointment.doctor)
-            .joinedload(Doctor.user)
+            .joinedload(Doctor.user),
+        joinedload(Appointment.department)
     ).filter(
         Appointment.patient_id == patient.id,
         Appointment.appointment_datetime >= datetime.now(),
@@ -2508,6 +2509,7 @@ def patient_dash_appointments_tab():
             "appointment_id": a.id,
             "doctor_id": a.doctor.id,
             "doctor_name": a.doctor.user.username,
+            "department": a.department.department_name,
             "date": a.appointment_datetime.date().isoformat(),
             "time": a.appointment_datetime.time().strftime("%I:%M %p"),
             "status": a.status.value
@@ -2857,7 +2859,7 @@ def get_availability_slots_patient_side(availability_id):
         "slots": slots
     })
 
-@app.route("/api/patient/cancel_appointment/<int:appointment_id>", methods=["PATCH"])
+@app.route("/api/patient/appointment/<int:appointment_id>/cancel", methods=["PATCH"])
 @role_required("patient")
 @blacklist_check
 def cancel_appointment(appointment_id):
@@ -2865,7 +2867,7 @@ def cancel_appointment(appointment_id):
     
     try:
         rows = Appointment.query.filter(
-            Appointment.id == appointment_id,
+            Appointment.id == appointment.id,
             Appointment.status == AppointmentStatusEnum.booked
         ).update({
             "status": AppointmentStatusEnum.cancelled

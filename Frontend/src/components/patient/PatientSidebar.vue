@@ -21,7 +21,7 @@ const route = useRoute()
         <v-list-item
         active-color="white"
         title="Upcoming Appointments"
-        to=""
+        to="/patient/upcoming-appointments"
         exact
         >
             <template #prepend>

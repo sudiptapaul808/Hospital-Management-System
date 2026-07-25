@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import api from '../../services/api'
+import CancelOpdAppointmentModal from '../../components/patient/CancelOpdAppointmentModal.vue';
 
 const appointments = ref([])
 const referrals = ref([])
@@ -19,9 +20,60 @@ const fetchData = async() => {
 onMounted(() => {
     fetchData()
 })
+
+//Cancel appointment===================================================================================================
+const showCancel = ref(false)
+const appointment_id = ref(null)
+const openCancel = (id) => {
+    appointment_id.value = id
+    showCancel.value = true
+}
 </script>
 
 <template>
-    <h1>Here the upcoming 5 nearest appointments will be shown (if there are any)</h1>
-    <h1>Also OPD referrals will be shown</h1>
+    <div>
+        <v-row class="mb-3" align="center" justify="space-between">
+            <v-col cols="auto">
+                <h2>Upcoming OPD Appointments</h2>
+            </v-col>
+        </v-row>
+        <v-table v-if="appointments.length">
+            <thead>
+                <tr>
+                    <th>Doctor Name</th>
+                    <th>Department</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="appointment in appointments" :key="appointment.appointment_id">
+                    <td>{{ appointment.doctor_name }}</td>
+                    <td>{{ appointment.department }}</td>
+                    <td>{{ appointment.date }}</td>
+                    <td>{{ appointment.time }}</td>
+                    <td>{{ appointment.status }}</td>
+                    <td><v-btn @click="openCancel(appointment.appointment_id)">Cancel</v-btn></td>
+                </tr>
+            </tbody>
+        </v-table>
+        <p v-else class="text-grey">
+            No scheduled appointments
+        </p>
+
+        <h2>Pending Referrals</h2>
+
+
+        <CancelOpdAppointmentModal 
+            v-if="showCancel"
+            v-model="showCancel"
+            :appointment-id="appointment_id"
+            @update:modelValue="showCancel = $event"
+            @cancelled="fetchData"
+        />
+    </div>
+
+
 </template>
