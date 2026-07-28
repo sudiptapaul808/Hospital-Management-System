@@ -6,12 +6,13 @@ import api from '../../services/api'
 import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue';
 import router from '../../router/index.js';
-import AddHistoryModal from '../../components/doctor/AddHistoryModal.vue';
+import AddHistoryModalOPD from '../../components/doctor/AddHistoryModalOPD.vue';
 import DischargeModal from '../../components/doctor/DischargeModal.vue';
 import CompleteAppointmentModal from '../../components/doctor/CompleteAppointmentModal.vue';
+import AddHistoryModalIPD from '../../components/doctor/AddHistoryModalIPD.vue';
 
 const route = useRoute()
-const id = route.params.id
+const id = route.params.id  //The appointment id
 const patientStore = usePatientStore()
 
 const patientDetails = ref(null)
@@ -23,6 +24,7 @@ const appointmentId = isAppointmetFlow ? route.query.appointment : null
 
 const fetchDetails = async() => {
     try {
+        console.log("Fetching details", id)
         const res = await api.get(`/api/doctor/${id}/details`)
         patientStore.patientDetails = res.data.patient_details
         pendingIPDReferrals.value = res.data.pending_ipd_referral
@@ -36,8 +38,10 @@ onMounted(() => {
 })
 
 //View Patient History=========================================================================================
-const goToHistory = (id) => {
-    router.push(`/doctor/patient/${id}/history`)
+const goToHistory = async(id) => {
+    // console.log(id)
+    await router.push(`/doctor/patient/${id}/history`)
+    console.log(router.currentRoute.value.fullPath)
 }
 
 //Add patient History Modal Controls==================================================================================
@@ -99,8 +103,13 @@ const showComplete = ref(false)
         >
             Refer Patient
         </v-btn>
-        <AddHistoryModal 
-            v-if="showAddHistory"
+        <AddHistoryModalOPD
+            v-if="isAppointmetFlow && showAddHistory"
+            v-model="showAddHistory"
+            :patient-id="id"
+        />
+        <AddHistoryModalIPD 
+            v-else-if="showAddHistory"
             v-model="showAddHistory"
             :patient-id="id"
         />

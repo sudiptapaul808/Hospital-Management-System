@@ -69,6 +69,7 @@ const fetchHistories = async() => {
 }
 
 onMounted(() => {
+    console.log("ViewHistory Mounted")
     fetchHistories()
 })
 </script>

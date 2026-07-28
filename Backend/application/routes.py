@@ -1905,26 +1905,96 @@ def view_patient_history(patient_id):
         "histories": histories
     }
     return jsonify(response)
-    
-@app.route("/api/doctor/new/<int:patient_id>/history", methods=["POST"])
+
+@app.route("/api/doctor/opd/<int:patient_id>/history/new", methods=["POST"])
 @role_required("doctor")
 @blacklist_check
-def update_patient_history(patient_id):
+def update_history_opd(patient_id):
     data = request.get_json()
 
     diagnosis = data.get("diagnosis")
     medicine = data.get("medicine")
     test_done = data.get("test_done", "")
-    #Get the department
+
+    if not diagnosis or not medicine:
+        return jsonify({"error": "Diagnosis and medicine are required"}), 400
+
+    doctor = current_user.doctor
+    patient = Patient.query.get_or_404(patient_id)
+    today = date.today()
+
+    appointment = Appointment.query.filter(
+        Appointment.doctor_id == doctor.id,
+        Appointment.patient_id == patient.id,
+        Appointment.status == AppointmentStatusEnum.booked,
+        func.date(Appointment.appointment_datetime) == today
+    ).first()
+
+    if not appointment:
+        return jsonify({"error": "No active appointment found"}), 403
+
+    department = SpecializationDept.query.get_or_404(appointment.department_id)
+
+    allowed_departments = [
+            dept.department_name for dept in doctor.departments
+    ]
+
+    if department.department_name not in allowed_departments:
+        return jsonify({"error": "You do not belong to this department"}), 403
+
+    try:
+        new_history = PatientHistory(
+            patient_id=patient.id,
+            doctor_id=doctor.id,
+            department=department.department_name,
+            visit_type="OPD",
+            test_done=test_done,
+            diagnosis_date=today,
+            diagnosis=diagnosis,
+            medicine=medicine
+        )
+
+        db.session.add(new_history)
+        db.session.commit()
+        
+        cache_delete_pattern("admin_patients_page_*")
+
+        return jsonify({
+            "message": "History added successfully",
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Database error"}), 500
+
+
+@app.route("/api/doctor/ipd/<int:patient_id>/history/new", methods=["POST"])
+@role_required("doctor")
+@blacklist_check
+def update_history_ipd(patient_id):
+    data = request.get_json()
+
+    diagnosis = data.get("diagnosis")
+    medicine = data.get("medicine")
+    test_done = data.get("test_done", "")
     department = data.get("department")
-    #Check if doctor belong to that department
-    #then make the history
 
     if not diagnosis or not medicine or not department:
         return jsonify({"error": "Diagnosis and medicine are required"}), 400
 
     doctor = current_user.doctor
-    doctor_id = doctor.id
+    patient = Patient.query.get_or_404(patient_id)
+
+    if not patient.is_admitted:
+        return jsonify({"error": "Patient is not admitted"}), 409
+
+    assigned = AssignedPatient.query.filter(
+        AssignedPatient.patient_id == patient.id,
+        AssignedPatient.doctor_id == doctor.id
+    ).first()
+
+    if not assigned:
+        return jsonify({"error": "You're not assigned to this patient"}), 403
     
     allowed_departments = [
         dept.department_name for dept in doctor.departments
@@ -1933,17 +2003,15 @@ def update_patient_history(patient_id):
     if department not in allowed_departments:
         return jsonify({"error": "You do not belong to this department"}), 403
     
-    patient = Patient.query.get_or_404(patient_id)
-    visit_type = "IPD" if patient.is_admitted else "OPD"
 
     diagnosis_date = date.today()
 
     try:
         new_history = PatientHistory(
             patient_id=patient_id,
-            doctor_id=doctor_id,
+            doctor_id=doctor.id,
             department=department,
-            visit_type=visit_type,
+            visit_type="IPD",
             test_done=test_done,
             diagnosis_date=diagnosis_date,
             diagnosis=diagnosis,
@@ -1961,7 +2029,7 @@ def update_patient_history(patient_id):
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "Database error", "details": str(e)}), 500
+        return jsonify({"error": "Database error"}), 500
 
 #This route is to get all the departments a doctor belongs to, for selecting department while adding histories
 @app.route("/api/doctor/departments", methods=["GET"])
@@ -1992,10 +2060,11 @@ def mark_appointment_complete(appointment_id):
         ).update({
             "status": AppointmentStatusEnum.completed
         })
-        db.session.commit()
         
         if rows == 0:
             return jsonify({"error": "Appointment already handled"}), 409
+
+        db.session.commit()
         
         cache_delete_pattern("admin_upcoming_appointments_page_*")
         cache_delete_pattern("admin_passed_appointments_page_*")
@@ -2873,10 +2942,10 @@ def cancel_appointment(appointment_id):
             "status": AppointmentStatusEnum.cancelled
         })
         
-        db.session.commit()
-        
         if rows == 0:
             return jsonify({"error": "Appointment already cancelled or completed"}), 409
+
+        db.session.commit()
         
         cache_delete_pattern("admin_upcoming_appointments_page_*")
         cache_delete_pattern("admin_passed_appointments_page_*")
@@ -2897,9 +2966,14 @@ def book():
     data = request.json
     doctor_id = data.get("doctor_id")
     appointment_datetime_str = data.get("appointment_datetime")
-    referral_id = data.get("referral_id")
+    referral_id = data.get("referral_id") #This comes in only when the user is booking through a OPD referral
     
     appointment_datetime = datetime.fromisoformat(appointment_datetime_str)
+
+    if appointment_datetime <= datetime.now():
+        return jsonify({
+            "error": "Booking window passed"
+        }), 400
 
     referral = None
     new_appointment = None
@@ -2915,6 +2989,18 @@ def book():
     if not (availability.start_time <= appointment_datetime.time() < availability.end_time):
         return jsonify({"error": "Doctor not available at this time"}), 400
 
+    #We don't allow one single patient with a booked appointment for a department for that day to book again for that department for that exact day. Unless the user cancels or books or completes and books again for some reason
+    existing = Appointment.query.filter(
+        Appointment.patient_id == patient.id,
+        Appointment.department_id == availability.department_id,
+        Appointment.status == AppointmentStatusEnum.booked,
+        func.date(Appointment.appointment_datetime) == appointment_datetime.date()
+    ).first()
+
+    if existing:
+        return jsonify({
+            "error": "You already have an appointment booked for this department on this day"
+        }), 409
 
     if not referral_id:
         if patient.is_admitted:

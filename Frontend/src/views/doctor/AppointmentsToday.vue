@@ -56,6 +56,7 @@ const fetchAppointments = async() => {
                 per_page: per_page.value
             }
         })
+        // console.log(res.data.data)
         appointments.value = res.data.data
         total.value = res.data.pagination.total
     } catch (err) {
@@ -70,7 +71,7 @@ onMounted(() => {
 })
 
 //time format================================================================================================
-const formatTime = (datatime) => {
+const formatTime = (datetime) => {
     return new Date(datetime).toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit'
@@ -79,7 +80,7 @@ const formatTime = (datatime) => {
 //Send to view patient page=================================================================================
 const goToPatient = (patientId, appointmentId) => {
     router.push({
-        path: `/doctor/patient/${patientId}`,
+        path: `/doctor/appointments-today/${patientId}`,
         query: {
             appointment: appointmentId
         }
@@ -98,7 +99,6 @@ const goToPatient = (patientId, appointmentId) => {
             <thead>
                 <tr>
                     <th>Time</th>
-                    <th>Patient ID</th>
                     <th>Patient Name</th>
                     <th>Status</th>
                 </tr>
@@ -106,7 +106,6 @@ const goToPatient = (patientId, appointmentId) => {
             <tbody>
                 <tr v-for="appointment in appointments" :key="appointment.id">
                     <td>{{ formatTime(appointment.datetime) }}</td>
-                    <td>{{ appointment.patient.id }}</td>
                     <td>{{ appointment.patient.name }}</td>
                     <td>{{ appointment.status }}</td>
                     <td>

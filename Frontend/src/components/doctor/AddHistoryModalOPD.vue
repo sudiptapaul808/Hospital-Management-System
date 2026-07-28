@@ -16,8 +16,7 @@ const loading = ref(false)
 const newHistory = ref({
     diagnosis: '',
     medicine: '',
-    test_done: '',
-    department: ''
+    test_done: ''
 })
 
 //Proper handling the closing of the modal=====================================================================
@@ -26,8 +25,7 @@ const handleClose = (val) => {
         newHistory.value = {
             diagnosis: '',
             medicine: '',
-            test_done: '',
-            department: ''
+            test_done: ''
         }
     }
     error.value = ''
@@ -42,11 +40,10 @@ const addHistory = async() => {
     error.value = ''
 
     try {
-        await api.post(`/api/doctor/new/${props.patientId}/history`, {
+        await api.post(`/api/doctor/opd/${props.patientId}/history/new`, {
             diagnosis: newHistory.value.diagnosis,
             medicine: newHistory.value.medicine,
-            test_done: newHistory.value.test_done,
-            department: newHistory.value.department
+            test_done: newHistory.value.test_done
         })
 
         emit('update:modelValue', false)
@@ -54,8 +51,7 @@ const addHistory = async() => {
         newHistory.value = {
             diagnosis: '',
             medicine: '',
-            test_done: '',
-            department: ''
+            test_done: ''
         }
     } catch (err) {
         error.value = err.response?.data?.error || "Something went wrong"
@@ -64,21 +60,6 @@ const addHistory = async() => {
     }
 }
 
-//Fetching the departments the doctor belongs to===============================================================
-const departments = ref([])
-
-const fetchDoctorDepartments = async() => {
-    try {
-        const res = await api.get(`/api/doctor/departments`)
-        departments.value = res.data.departments
-    } catch (err) {
-        console.log(err)
-    }
-}
-
-onMounted(() => {
-    fetchDoctorDepartments()
-})
 </script>
 
 <template>
@@ -99,14 +80,6 @@ onMounted(() => {
                     <v-text-field 
                         label="Tests done"
                         v-model="newHistory.test_done"
-                    />
-                    <v-autocomplete 
-                        v-model="newHistory.department"
-                        :items="departments"
-                        item-title="department_name"
-                        item-value="department_name"
-                        label="Department"
-                        clearable
                     />
                 <p v-if="error" class="text-red text-center">{{ error }}</p>
                 </v-card-text>

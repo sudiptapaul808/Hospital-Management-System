@@ -2,6 +2,7 @@ from enum import unique
 import enum
 from .database import db
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import Index, text, func
 
 class RoleEnum(enum.Enum):
     patient = "patient"
@@ -70,14 +71,38 @@ class PatientHistory(db.Model):
     doctor = db.relationship("Doctor", backref = "patient_histories")  
     
 class Appointment(db.Model):
+    # __table_args__ = (
+    #     db.UniqueConstraint('doctor_id', 'appointment_datetime', name='unique_doctor_slot'), #a doctor cannot have two appointment at the same time. This also ensures safety for race conditions
+    #     db.UniqueConstraint('patient_id', 'appointment_datetime', name='unique_patient_slot') #patient cannot attend two appointment at the same time
+    # )
     __table_args__ = (
-        db.UniqueConstraint('doctor_id', 'appointment_datetime', name='unique_doctor_slot'), #a doctor cannot have two appointment at the same time. This also ensures safety for race conditions
-        db.UniqueConstraint('patient_id', 'appointment_datetime', name='unique_patient_slot') #patient cannot attend two appointment at the same time
+        Index(
+            "unique_doctor_slot",
+            "doctor_id",
+            "appointment_datetime", #A doctor cannot have two appointments at the same time
+            unique=True,
+            postgresql_where=text("status = 'booked'")
+        ),
+        Index(
+            "unique_patient_slot",
+            "patient_id",
+            "appointment_datetime", #A patient cannot attend two appointments at the same time
+            unique=True,
+            postgresql_where=text("status = 'booked'")
+        ),
+        # Index(
+        #     "unique_patient_department_day", #If a patient has already booked for that day on that department, then the patient cannot book another slot, unless the previous one is cancelled or completed
+        #     "patient_id",
+        #     "department_id",
+        #     text("date(appointment_datetime)"),
+        #     unique=True,
+        #     postgresql_where=text("status = 'booked'")
+        # )
     )
     id = db.Column(db.Integer, primary_key = True)
     patient_id = db.Column(db.Integer, db.ForeignKey("patient.id"), nullable = False)
     doctor_id = db.Column(db.Integer, db.ForeignKey("doctor.id"), nullable = False)
-    department_id = db.Column(db.Integer, db.ForeignKey("specialization_dept.id"), nullable = False) #This has been added later, once the availabilities were assiciated with departments
+    department_id = db.Column(db.Integer, db.ForeignKey("specialization_dept.id"), nullable = False) #This has been added later, once the availabilities were assiciated with department
     appointment_datetime = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.Enum(AppointmentStatusEnum), nullable=False)
     
