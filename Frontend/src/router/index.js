@@ -96,6 +96,14 @@ const routes = [
       {
         path: 'availabilities/:date',
         component: () => import('../views/doctor/AvailabilityByDate.vue')
+      },
+      {
+        path: 'department-list',
+        component: () => import('../views/doctor/DepartmentList.vue')
+      },
+      {
+        path: 'doctors-from-department/:departmentId',
+        component: () => import('../views/doctor/DoctorListFromDepartment.vue')
       }
     ]
   }, 

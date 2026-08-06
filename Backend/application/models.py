@@ -55,7 +55,8 @@ class Patient(db.Model):
 class AssignedPatient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     doctor_id = db.Column(db.Integer, db.ForeignKey("doctor.id"))
-    patient_id = db.Column(db.Integer, db.ForeignKey("patient.id"))
+    patient_id = db.Column(db.Integer, db.ForeignKey("patient.id")) 
+    #Add unique = True for patient_id so as to enforce that one patient can have only one doctor at a time. 
     
 class PatientHistory(db.Model):
     id = db.Column(db.Integer, primary_key = True)

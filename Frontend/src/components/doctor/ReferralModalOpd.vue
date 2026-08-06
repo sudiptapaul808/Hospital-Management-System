@@ -2,32 +2,41 @@
 import api from '../../services/api'
 import { ref } from 'vue'
 import router from '../../router/index.js';
+import { usePatientStore } from '../../stores/patient.js';
 
 const props = defineProps({
     modelValue: Boolean,
-    patientId: Number
+    referredToDepartmentId: Number,
+    referredToDepartmentName: String,
+    referredToDoctorId: Number,
+    referredToDoctorName: String
 })
+
+const patientStore = usePatientStore()
+const patientId = patientStore.patientDetails.id
 
 const emit = defineEmits(['update:modelValue'])
 
 const error = ref('')
 const loading = ref(false)
 
-//handling closing of modal====================================================================================
 const handleClose = (val) => {
     error.value = ''
     emit('update:modelValue', val)
 }
 
-//Discharge of patient========================================================================================
-const dischargePatient = async() => {
+//Refer Patient-====================================================================================================
+const completeReferral = async() => {
     if (loading.value) return
     loading.value = true
     error.value = ''
     try {
-        await api.patch(`/api/doctor/${props.patientId}/discharge`)
+        await api.patch(`/api/refer_OPD_patient/${patientId}`, {
+            referred_to_dept_id: props.referredToDepartmentId,
+            referred_to_doctor_id: props.referredToDoctorId
+        })
         emit('update:modelValue', false)
-        await router.push('/doctor/assigned-patients')
+        await router.push('/doctor/appointments-today')
     } catch (err) {
         error.value = err.response?.data?.error || "Something went wrong"
     } finally {
@@ -39,9 +48,9 @@ const dischargePatient = async() => {
 <template>
     <div>
         <v-dialog :model-value="modelValue"
-        @update:modelValue="handleClose" max-width="400">
+        @update:modelValue="handleClose" max-width="600">
             <v-card rounded="lg">
-                <v-card-title>Confirm Discharge</v-card-title>
+                <v-card-title>Refer patient to Dr.{{ props.referredToDoctorName }} of {{ props.referredToDepartmentName }} Department</v-card-title>
                 <p v-if="error" class="text-red text-center">{{ error }}</p>
                 <v-card-actions>
                     <v-btn text @click="handleClose(false)" variant="tonal">Close</v-btn>
@@ -50,7 +59,7 @@ const dischargePatient = async() => {
                         variant="tonal" 
                         :loading="loading"
                         :disabled="loading"
-                        @click="dischargePatient"
+                        @click="completeReferral"
                     >
                         Confirm
                     </v-btn>

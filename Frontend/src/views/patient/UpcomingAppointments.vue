@@ -63,7 +63,29 @@ const openCancel = (id) => {
             No scheduled appointments
         </p>
 
-        <h2>Pending Referrals</h2>
+
+        <v-row class="mb-3" align="center" justify="space-between">
+            <v-col cols="auto">
+                <h2>Pending OPD referral</h2>
+            </v-col>
+        </v-row>
+        <div v-if="referrals">
+            <v-card class="mb-4">
+                <v-card-text>
+                    <p><strong>From: </strong>Dr. {{ referrals.referred_by_doctor_name }}</p>
+                    <p><strong>To Department: </strong>{{ referrals.referred_to_dept_name }}</p>
+                    <p><strong>Doctor: </strong>Dr. {{ referrals.referred_to_doctor_name}}</p>
+                </v-card-text>
+                <v-card-actions>
+                    <v-btn color="primary">
+                        Book Appointment
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </div>
+        <div v-else>
+            No pending referrals
+        </div>
 
 
         <CancelOpdAppointmentModal 

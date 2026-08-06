@@ -53,6 +53,12 @@ const showDischarge = ref(false)
 //Complete Appointment Modal controls=======================================================================
 const showComplete = ref(false)
 
+//Referral button route to Department list=============================================
+const goToDepartmentList = () => {
+    router.push({
+        path: '/doctor/department-list'
+    })
+}
 </script>
 
 <template>
@@ -99,7 +105,7 @@ const showComplete = ref(false)
         <v-btn
             color="primary"
             variant="tonal"
-            @click=""
+            @click="goToDepartmentList"
         >
             Refer Patient
         </v-btn>

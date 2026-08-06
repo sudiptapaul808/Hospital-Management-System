@@ -43,10 +43,23 @@ def doctors_belonging_from_the_department(department_id):
         ).filter_by(id=department_id).first_or_404()
     )
     
-    return [  #since this is a helper, we won't wrap it inside a "data:"
-        {
-            "id": d.id,
-            "name": d.user.username
-        } for d in department.doctors
-    ]
+    # return [  #since this is a helper, we won't wrap it inside a "data:"
+    #     {
+    #         "id": d.id,
+    #         "name": d.user.username
+    #     } for d in department.doctors
+    # ]
+
+    return {
+        "department_id": department.id,
+        "department_name": department.department_name,
+        "department_description": department.description,
+        "doctors": [
+            {
+                "doctor_id": d.id,
+                "doctor_name": d.user.username
+            } for d in department.doctors
+        ]
+
+    }
     

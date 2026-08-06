@@ -1140,7 +1140,7 @@ def admin_edit_patient(patient_id):
     patient = (
         Patient.query
         .filter(Patient.id == patient_id)
-        .with_for_update()
+        .with_for_update() #Row locking the patient
         .first_or_404()
     )
     user = patient.user
@@ -1980,7 +1980,7 @@ def update_history_ipd(patient_id):
     department = data.get("department")
 
     if not diagnosis or not medicine or not department:
-        return jsonify({"error": "Diagnosis and medicine are required"}), 400
+        return jsonify({"error": "Department, Diagnosis and medicine are required"}), 400
 
     doctor = current_user.doctor
     patient = Patient.query.get_or_404(patient_id)
@@ -2078,7 +2078,7 @@ def mark_appointment_complete(appointment_id):
         return jsonify({"error": "Database error"}), 500
 
 #Doctor Referrals
-@app.route("/api/department_list", methods=["GET"])
+@app.route("/api/doctor/department_list", methods=["GET"])
 @role_required("doctor")
 @blacklist_check
 def get_department_list():
@@ -2105,13 +2105,9 @@ def get_department_list():
 @role_required("doctor")
 @blacklist_check
 def doctors_from_the_department(department_id):
-    doctors_list = doctors_belonging_from_the_department(department_id)
+    data = doctors_belonging_from_the_department(department_id)
     
-    response = {
-        "doctors_from_the_department": doctors_list
-    }
-    
-    return jsonify(response)
+    return jsonify(data)
     
 #Now upon clicking the doctor name, we refer the patient
 @app.route("/api/refer_OPD_patient/<int:patient_id>", methods=["PATCH"])
@@ -2120,12 +2116,12 @@ def doctors_from_the_department(department_id):
 def refer_OPD_patient(patient_id):
     doctor = current_user.doctor
     data = request.json
-    
-    if not data or "referred_to_dept_id" not in data:
-        return jsonify({"error": "Department is required"}), 400
-    
+
     dept_id = data.get("referred_to_dept_id")
     referred_to_doc_id = data.get("referred_to_doctor_id")
+    
+    if not data or not dept_id or not referred_to_doc_id:
+        return jsonify({"error": "Missing required fields"}), 400
     
     response, status = create_opd_referral(doctor, patient_id, dept_id, referred_to_doc_id)
     
@@ -2397,13 +2393,14 @@ def discharge_assigned_patient(patient_id):
     patient = (
         Patient.query
         .filter(Patient.id == patient_id)
-        .with_for_update()
+        .with_for_update() #row locking the patient
         .first_or_404()
     )
     
     if not patient.assigned_to or patient.assigned_to.doctor_id != doctor.id:
         return jsonify({"error": "Patient not assigned to you"}), 403
-    
+
+    #Cancelling all IPD referrals (requests made by the doctor) that are pending
     Referrals.query.filter(
         Referrals.patient_id == patient.id,
         Referrals.referral_type == ReferralTypeEnum.IPD,
@@ -2568,7 +2565,7 @@ def patient_dash_appointments_tab():
         joinedload(Appointment.department)
     ).filter(
         Appointment.patient_id == patient.id,
-        Appointment.appointment_datetime >= datetime.now(),
+        func.date(Appointment.appointment_datetime) >= date.today(),
         Appointment.status != AppointmentStatusEnum.cancelled
     ).order_by(Appointment.appointment_datetime.asc()).limit(5).all()
     
@@ -2609,7 +2606,7 @@ def patient_dash_appointments_tab():
             "referred_to_dept_id": OPD_patient_pending_referral.referred_to_dept_id,
             "referred_to_dept_name": OPD_patient_pending_referral.department.department_name,
             "referred_to_doctor_id": OPD_patient_pending_referral.referred_to_doctor_id,
-            "referred_to_doctor_name": OPD_patient_pending_referral.referred_to.user.username if OPD_patient_pending_referral.referred_to else None,
+            "referred_to_doctor_name": OPD_patient_pending_referral.referred_to.user.username,
             "referral_date": OPD_patient_pending_referral.referral_date.isoformat()
         }
         
@@ -2693,16 +2690,16 @@ def patient_dash_history_tab():
     
     return jsonify(response)
 
-@app.route("/api/patient/department/<int:department_id>/details", methods=["GET"])
-@role_required("patient")
-@blacklist_check
-def department_details(department_id):
-    department = SpecializationDept.query.get_or_404(department_id)
-    return jsonify({
-        "id": department.id,
-        "department_name": department.department_name,
-        "description": department.description
-    }), 200
+# @app.route("/api/patient/department/<int:department_id>/details", methods=["GET"])
+# @role_required("patient")
+# @blacklist_check
+# def department_details(department_id):
+#     department = SpecializationDept.query.get_or_404(department_id)
+#     return jsonify({
+#         "id": department.id,
+#         "department_name": department.department_name,
+#         "description": department.description
+#     }), 200
 
 @app.route("/api/patient/list_doctors/<int:department_id>", methods=["GET"])
 @role_required("patient")
@@ -2710,11 +2707,7 @@ def department_details(department_id):
 def patient_doctors_from_the_department(department_id):
     doctors_list = doctors_belonging_from_the_department(department_id)
     
-    response = {
-        "doctors_from_the_department": doctors_list
-    }
-    
-    return jsonify(response)
+    return jsonify(doctors_list)
 
 @app.route("/api/patient/doctor/<int:doctor_id>/details", methods=["GET"])
 @role_required("patient")

@@ -1,7 +1,10 @@
-from application.models import Doctor, AssignedPatient, Patient, SpecializationDept, Referrals, Appointment
+from application.models import Doctor, Patient, SpecializationDept, Referrals, ReferralTypeEnum, ReferralStatusEnum, Appointment, AppointmentStatusEnum
 from sqlalchemy.orm import joinedload
-from datetime import datetime, timedelta
+from sqlalchemy import func
+from datetime import datetime, date
 from application.cache import cache_get, cache_delete, cache_set, cache_delete_pattern
+from application.database import db
+
 
 def get_doctors_paginated(page, per_page):
     doctor_page = (
@@ -48,26 +51,42 @@ def get_departments_belonging_to_a_doctor(doctor_id):
     }
     
 def create_opd_referral(doctor, patient_id, dept_id, referred_to_doc_id):
-    patient = Patient.query.get(patient_id)
-    if not patient:
-        return {"error": "Patient doesn't exist"}, 404
+    patient = Patient.query.get_or_404(patient_id)
+
     if patient.is_admitted:
         return {"error": "Patient is currently admitted"}, 400
     
-    department = SpecializationDept.query.get(dept_id)
-    if not department:
-        return {"error": "Department doesn't exist"}, 404
+    department = SpecializationDept.query.get_or_404(dept_id)
+
+    referred_to_doc = Doctor.query.get_or_404(referred_to_doc_id)
     
-    referred_to_doc = None
-    if referred_to_doc_id:
-        referred_to_doc = Doctor.query.get(referred_to_doc_id)
-        if not referred_to_doc:
-            return {"error": "Doctor being referred to doesn't exist"}, 404
-    
-    if referred_to_doc:
-        if department not in referred_to_doc.departments:
-            return {"error": "Doctor doesn't belong to the selected department"}, 400
-        
+    if department not in referred_to_doc.departments:
+        return {"error": "Doctor doesn't belong to the selected department"}, 400
+
+    if doctor.id == referred_to_doc.id:
+        return({"error": "You cannot refer yourself"}), 409
+
+    appointment = Appointment.query.filter(
+        Appointment.patient_id == patient.id,
+        Appointment.doctor_id == doctor.id,
+        Appointment.status == AppointmentStatusEnum.booked,
+        func.date(Appointment.appointment_datetime) == date.today()
+    ).first()
+
+    if not appointment:
+        return ({"error": "No booked appointments with this patient exists today"}), 403
+
+
+    #Cancelling previous pending OPD referral
+    Referrals.query.filter(
+        Referrals.patient_id == patient.id,
+        Referrals.referral_type == ReferralTypeEnum.OPD,
+        Referrals.referral_status == ReferralStatusEnum.pending
+    ).update({
+        "referral_status": ReferralStatusEnum.cancelled
+    })
+
+    #In case there are previous pending OPD referrals, do just to be safe check. 
     existing = Referrals.query.filter(
         Referrals.patient_id == patient.id,
         Referrals.referral_type == ReferralTypeEnum.OPD,
@@ -76,7 +95,18 @@ def create_opd_referral(doctor, patient_id, dept_id, referred_to_doc_id):
     
     if existing:
         return {"error": "A referral already pending for this patient"}, 400
-    
+
+    #We need to set the current doctor's appointment with the patient to be of status 'cancelled'.
+    Appointment.query.filter(
+        Appointment.patient_id == patient.id, 
+        Appointment.doctor_id == doctor.id,
+        func.date(Appointment.appointment_datetime) == date.today(), 
+        Appointment.status == AppointmentStatusEnum.booked
+    ).update({
+        "status": AppointmentStatusEnum.cancelled
+    })
+
+    #Finally the new referral
     referral = Referrals(
         patient_id=patient.id,
         referred_by_doctor_id=doctor.id,
