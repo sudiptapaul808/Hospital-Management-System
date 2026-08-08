@@ -2,6 +2,9 @@
 import { onMounted, ref } from 'vue';
 import api from '../../services/api'
 import CancelOpdAppointmentModal from '../../components/patient/CancelOpdAppointmentModal.vue';
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const appointments = ref([])
 const referrals = ref([])
@@ -27,6 +30,11 @@ const appointment_id = ref(null)
 const openCancel = (id) => {
     appointment_id.value = id
     showCancel.value = true
+}
+
+//Send to book flow from the referral book==============================================================================
+const goToDoctor = (id) => {
+    router.push(`/patient/doctor-details/${id}`)
 }
 </script>
 
@@ -77,7 +85,7 @@ const openCancel = (id) => {
                     <p><strong>Doctor: </strong>Dr. {{ referrals.referred_to_doctor_name}}</p>
                 </v-card-text>
                 <v-card-actions>
-                    <v-btn color="primary">
+                    <v-btn color="primary" @click="goToDoctor(referrals.referred_to_doctor_id)">
                         Book Appointment
                     </v-btn>
                 </v-card-actions>

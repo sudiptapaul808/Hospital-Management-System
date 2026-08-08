@@ -2831,6 +2831,10 @@ def get_doctor_availabilities_patient_side(doctor_id):
         "availabilities": data
     })
 
+
+#This one shows the availability for the day, for that specific department. i.e, one availability. Cause our rule is one department availability slot PER DAY. You can set another slot with different 
+
+#This one shows all the availabilities for a day, multiple departments if the doctor has set it
 @app.route("/api/patient/<int:doctor_id>/availabilities_by_date", methods=["GET"])
 @role_required("patient")
 @blacklist_check
@@ -2959,22 +2963,30 @@ def book():
     data = request.json
     doctor_id = data.get("doctor_id")
     appointment_datetime_str = data.get("appointment_datetime")
-    referral_id = data.get("referral_id") #This comes in only when the user is booking through a OPD referral
+
+    print(data)
+    print(appointment_datetime_str)
     
     appointment_datetime = datetime.fromisoformat(appointment_datetime_str)
+
+    print(appointment_datetime.time())
 
     if appointment_datetime <= datetime.now():
         return jsonify({
             "error": "Booking window passed"
         }), 400
 
-    referral = None
     new_appointment = None
 
     availability = DoctorAvailability.query.filter_by(
         doctor_id=doctor_id,
         date=appointment_datetime.date()
     ).first()    
+
+    print(availability)
+    print(availability.start_time)
+    print(availability.end_time)
+    print(availability.date)
 
     if not availability:
         return jsonify({"error": "Doctor not available on this date"}), 400
@@ -2995,20 +3007,8 @@ def book():
             "error": "You already have an appointment booked for this department on this day"
         }), 409
 
-    if not referral_id:
-        if patient.is_admitted:
-            return jsonify({"error": "IPD patients cannot book"}), 400
-    else:
-        referral = Referrals.query.filter(
-            Referrals.id == referral_id,
-            Referrals.patient_id == patient.id,
-            Referrals.referral_status == ReferralStatusEnum.pending,
-            Referrals.referral_type == ReferralTypeEnum.OPD
-        ).first()
-        if not referral:
-            return jsonify({"error": "Referral not found or invalid"}), 404
-        if referral.referred_to_doctor_id and referral.referred_to_doctor_id != doctor_id:
-            return jsonify({"error": "Doctor doesn't match referral"}), 400
+    if patient.is_admitted:
+        return jsonify({"error": "IPD patients cannot book"}), 400
     
     #Now commit everything at once         
     new_appointment = Appointment(
@@ -3018,8 +3018,9 @@ def book():
         status=AppointmentStatusEnum.booked,
         department_id=availability.department_id
     )
-    if referral:
-        referral.referral_status = ReferralStatusEnum.completed
+
+    complete_matching_opd_referral(patient.id, doctor_id, availability.department_id) #patient service to complete referral
+
     try:
         db.session.add(new_appointment)
         db.session.commit()
@@ -3027,7 +3028,7 @@ def book():
         cache_delete_pattern("admin_upcoming_appointments_page_*")
         cache_delete_pattern("admin_passed_appointments_page_*")
         cache_delete("admin_summary")
-        cache_delete_pattern("admin_opd_referrals_page_*")
+        # cache_delete_pattern("admin_opd_referrals_page_*")
         
         return jsonify({
             "message": "Appointment booked successfully",
