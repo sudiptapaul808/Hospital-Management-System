@@ -3,6 +3,7 @@ import enum
 from .database import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import Index, text, func
+from sqlalchemy.dialects.postgresql import ExcludeConstraint
 
 class RoleEnum(enum.Enum):
     patient = "patient"
@@ -72,40 +73,48 @@ class PatientHistory(db.Model):
     doctor = db.relationship("Doctor", backref = "patient_histories")  
     
 class Appointment(db.Model):
-    # __table_args__ = (
-    #     db.UniqueConstraint('doctor_id', 'appointment_datetime', name='unique_doctor_slot'), #a doctor cannot have two appointment at the same time. This also ensures safety for race conditions
-    #     db.UniqueConstraint('patient_id', 'appointment_datetime', name='unique_patient_slot') #patient cannot attend two appointment at the same time
-    # )
-    __table_args__ = (
-        Index(
-            "unique_doctor_slot",
-            "doctor_id",
-            "appointment_datetime", #A doctor cannot have two appointments at the same time
-            unique=True,
-            postgresql_where=text("status = 'booked'")
-        ),
-        Index(
-            "unique_patient_slot",
-            "patient_id",
-            "appointment_datetime", #A patient cannot attend two appointments at the same time
-            unique=True,
-            postgresql_where=text("status = 'booked'")
-        ),
-        # Index(
-        #     "unique_patient_department_day", #If a patient has already booked for that day on that department, then the patient cannot book another slot, unless the previous one is cancelled or completed
-        #     "patient_id",
-        #     "department_id",
-        #     text("date(appointment_datetime)"),
-        #     unique=True,
-        #     postgresql_where=text("status = 'booked'")
-        # )
-    )
     id = db.Column(db.Integer, primary_key = True)
     patient_id = db.Column(db.Integer, db.ForeignKey("patient.id"), nullable = False)
     doctor_id = db.Column(db.Integer, db.ForeignKey("doctor.id"), nullable = False)
     department_id = db.Column(db.Integer, db.ForeignKey("specialization_dept.id"), nullable = False) #This has been added later, once the availabilities were assiciated with department
-    appointment_datetime = db.Column(db.DateTime, nullable=False)
+    start_datetime = db.Column(db.DateTime, nullable=False)
+    end_datetime = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.Enum(AppointmentStatusEnum), nullable=False)
+
+    __table_args__ = (
+            # Index(
+            #     "unique_doctor_slot",
+            #     "doctor_id",
+            #     "appointment_datetime", #A doctor cannot have two appointments at the same time
+            #     unique=True,
+            #     postgresql_where=text("status = 'booked'")
+            # ),
+            # Index(
+            #     "unique_patient_slot",
+            #     "patient_id",
+            #     "appointment_datetime", #A patient cannot attend two appointments at the same time
+            #     unique=True,
+            #     postgresql_where=text("status = 'booked'")
+            # ),
+            ExcludeConstraint(
+                (text("patient_id"), "="),
+                (
+                    text("tsrange(start_datetime, end_datetime, '[)')"),
+                    "&&"
+                ),
+                where=text("status = 'booked'"),
+                name="exclude_patient_overlapping_appointment"
+            ),
+            ExcludeConstraint(
+                (text("doctor_id"), "="),
+                (
+                    text("tsrange(start_datetime, end_datetime, '[)')"), 
+                    "&&"
+                ),
+                where = text("status = 'booked'"),
+                name = "exclude_doctor_overlapping_appointment"
+            )
+        )
     
     patient = db.relationship("Patient", backref="appointments")
     doctor = db.relationship("Doctor", backref="appointments")
@@ -140,20 +149,27 @@ class DoctorDepartment(db.Model):
     dept_id = db.Column(db.Integer, db.ForeignKey('specialization_dept.id'), primary_key=True)
     
 class DoctorAvailability(db.Model):
-    __table_args__ = (
-        db.UniqueConstraint(
-            "doctor_id",
-            "department_id",
-            "date",
-            name="unique_doctor_department_day"
-        ),
-    )
     id = db.Column(db.Integer, primary_key=True)
     doctor_id = db.Column(db.Integer, db.ForeignKey("doctor.id"), nullable=False)
     department_id = db.Column(db.Integer, db.ForeignKey("specialization_dept.id"), nullable=False)
     date = db.Column(db.Date, nullable=False)        
     start_time = db.Column(db.Time, nullable=False)
-    end_time = db.Column(db.Time, nullable=False)    
+    end_time = db.Column(db.Time, nullable=False)   
+
+    __table_args__ = (
+        ExcludeConstraint(
+            ("doctor_id", "="),
+            (
+                func.tsrange(
+                    date + start_time,
+                    date + end_time,
+                    "[)"
+                ),
+                "&&"
+            ),
+            name = "exclude_doctor_overlapping_availability"
+        ),
+    )
 
     doctor = db.relationship("Doctor", backref="availabilities")
     department = db.relationship("SpecializationDept", backref="availabilities")

@@ -2240,7 +2240,7 @@ def doctor_create_availability():
     ).first()
     
     if existing:
-        return jsonify({"error": "Doctor already has availability in another department during this time"}), 409
+        return jsonify({"error": "Doctor already has availability during this time"}), 409
     
     new_slot = DoctorAvailability(
         doctor_id=doctor.id,
@@ -2256,7 +2256,7 @@ def doctor_create_availability():
         return jsonify({"message": "Slot created successfully"}), 201
     except IntegrityError:
         db.session.rollback()
-        return jsonify({"error": "Slot already created"}), 409
+        return jsonify({"error": "Availability overlaps with another availability"}), 409
     except Exception:
         db.session.rollback()
         return jsonify({"error": "Database error"}), 500
@@ -2328,7 +2328,7 @@ def doctor_update_availability(availability_id):
     ).first()
     
     if existing: #This check is for making sure the doctor is not set to be in two departments at once. This includes overlapping times or the same time but different departments
-        return jsonify({"error": "Doctor already has availability in another department during this time"}), 409
+        return jsonify({"error": "Doctor already has availability during this time"}), 409
     
     slot.start_time = start_time
     slot.end_time = end_time
@@ -2345,7 +2345,7 @@ def doctor_update_availability(availability_id):
         return jsonify({"message": "Updated"}), 200 
     except IntegrityError:
         db.session.rollback()
-        return jsonify({"error": "Slot already created"}), 409
+        return jsonify({"error": "Availability overlaps with another availability"}), 409
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "Database error"}), 500
@@ -2832,14 +2832,15 @@ def get_doctor_availabilities_patient_side(doctor_id):
     })
 
 
-#This one shows the availability for the day, for that specific department. i.e, one availability. Cause our rule is one department availability slot PER DAY. You can set another slot with different 
 
-#This one shows all the availabilities for a day, multiple departments if the doctor has set it
-@app.route("/api/patient/<int:doctor_id>/availabilities_by_date", methods=["GET"])
+
+#This route shows all the availabilities for a day for a specific department.
+@app.route("/api/patient/<int:doctor_id>/<int:department_id>/availabilities_by_date", methods=["GET"])
 @role_required("patient")
 @blacklist_check
-def get_availabilities_by_date_patient_side(doctor_id):
+def get_availabilities_by_date_patient_side(doctor_id, department_id):
     doctor = Doctor.query.get_or_404(doctor_id)
+    department = SpecializationDept.query.get_or_404(department_id)
     date_str = request.args.get("date")
     
     if not date_str:
@@ -2850,9 +2851,10 @@ def get_availabilities_by_date_patient_side(doctor_id):
     except ValueError:
         return jsonify({"error": "Invalid date format"}), 400
     
-    #Now we get the availabilities for THIS DOCTOR for THIS DATE
+    #Now we get the availabilities for THIS DOCTOR for THIS DATE. For the selected department
     availabilities = DoctorAvailability.query.filter(
         DoctorAvailability.doctor_id == doctor.id,
+        DoctorAvailability.department_id == department.id,
         DoctorAvailability.date == date_obj
     ).order_by(DoctorAvailability.start_time.asc()).all()
     
@@ -2978,9 +2980,11 @@ def book():
 
     new_appointment = None
 
-    availability = DoctorAvailability.query.filter_by(
-        doctor_id=doctor_id,
-        date=appointment_datetime.date()
+    availability = DoctorAvailability.query.filter(
+        DoctorAvailability.doctor_id == doctor_id,
+        DoctorAvailability.date == appointment_datetime.date(),
+        DoctorAvailability.start_time <= appointment_datetime.time(),
+        DoctorAvailability.end_time > appointment_datetime.time()
     ).first()    
 
     print(availability)
@@ -2989,10 +2993,7 @@ def book():
     print(availability.date)
 
     if not availability:
-        return jsonify({"error": "Doctor not available on this date"}), 400
-
-    if not (availability.start_time <= appointment_datetime.time() < availability.end_time):
-        return jsonify({"error": "Doctor not available at this time"}), 400
+        return jsonify({"error": "Doctor not available on this time"}), 400
 
     #We don't allow one single patient with a booked appointment for a department for that day to book again for that department for that exact day. Unless the user cancels or books or completes and books again for some reason
     existing = Appointment.query.filter(

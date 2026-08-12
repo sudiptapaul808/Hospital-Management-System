@@ -2,6 +2,9 @@
 import { onMounted, ref } from 'vue';
 import api from '../../services/api'
 import { useRoute, useRouter } from 'vue-router'
+import { useDepartmentStore } from '../../stores/department';
+
+const deparmentStore = useDepartmentStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -14,7 +17,7 @@ const availabilityDetails = ref([])
 
 const fetchDetails = async() => {
     try {
-        const res = await api.get(`/api/patient/${doctorId}/availabilities_by_date`,{
+        const res = await api.get(`/api/patient/${doctorId}/${deparmentStore.id}/availabilities_by_date`,{
             params: {
                 date: date
             }
