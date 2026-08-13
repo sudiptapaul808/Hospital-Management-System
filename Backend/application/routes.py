@@ -10,6 +10,7 @@ from sqlalchemy.orm import joinedload
 from application.services.department_service import *
 from application.services.doctor_service import *
 from application.services.patient_service import *
+from application.services.appointment_service import *
 #concurrency control while creating a new row. (check models.py)
 from sqlalchemy.exc import IntegrityError
 
@@ -2226,6 +2227,15 @@ def doctor_create_availability():
     
     if end_time <= start_time:
         return jsonify({"error": "End time must be later than start time"}), 400
+
+    #We wanna make sure that the time slot that came is divisible by 30, we don't want an extra 17 minute to hand off the end
+    #Make it robust, the doctor can only make slots of duration 30, 60, 120, 240 minutes and so on
+    start_minutes = start_time.hour * 60 + start_time.minute
+    end_minutes = end_time.hour * 60 + end_time.minute
+    total_minutes = end_minutes - start_minutes
+
+    if total_minutes % 30 != 0:
+        return jsonify({"error": "Availability duration must be a multiple of 30 minutes"}), 400
     
     department = SpecializationDept.query.get_or_404(selected_department)
     
@@ -2305,6 +2315,13 @@ def doctor_update_availability(availability_id):
     
     if end_time <= start_time:
         return jsonify({"error": "End time must be later than start time"}), 400
+
+    start_minutes = start_time.hour * 60 + start_time.minute
+    end_minutes = end_time.hour * 60 + end_time.minute
+    total_minutes = end_minutes - start_minutes
+
+    if total_minutes % 30 != 0:
+        return jsonify({"error": "Availability duration must be a multiple of 30 minutes"}), 400
     
     start_dt = datetime.combine(slot.date, slot.start_time)
     end_dt = datetime.combine(slot.date, slot.end_time)
@@ -2964,16 +2981,13 @@ def book():
     patient = current_user.patient
     data = request.json
     doctor_id = data.get("doctor_id")
-    appointment_datetime_str = data.get("appointment_datetime")
-
-    print(data)
-    print(appointment_datetime_str)
+    start_datetime_str = data.get("start_datetime")
+    end_datetime_str = data.get("end_datetime")
     
-    appointment_datetime = datetime.fromisoformat(appointment_datetime_str)
+    start_datetime = datetime.fromisoformat(start_datetime_str)
+    end_datetime = datetime.fromisoformat(end_datetime_str)
 
-    print(appointment_datetime.time())
-
-    if appointment_datetime <= datetime.now():
+    if start_datetime <= datetime.now():
         return jsonify({
             "error": "Booking window passed"
         }), 400
@@ -2982,30 +2996,34 @@ def book():
 
     availability = DoctorAvailability.query.filter(
         DoctorAvailability.doctor_id == doctor_id,
-        DoctorAvailability.date == appointment_datetime.date(),
-        DoctorAvailability.start_time <= appointment_datetime.time(),
-        DoctorAvailability.end_time > appointment_datetime.time()
+        DoctorAvailability.date == start_datetime.date(),
+        DoctorAvailability.start_time <= start_datetime.time(),
+        DoctorAvailability.end_time > end_datetime.time()
     ).first()    
 
-    print(availability)
-    print(availability.start_time)
-    print(availability.end_time)
-    print(availability.date)
+    # print(availability)
+    # print(availability.start_time)
+    # print(availability.end_time)
+    # print(availability.date)
 
     if not availability:
         return jsonify({"error": "Doctor not available on this time"}), 400
 
-    #We don't allow one single patient with a booked appointment for a department for that day to book again for that department for that exact day. Unless the user cancels or books or completes and books again for some reason
+    if not validate_booking_slot(availability, start_datetime, end_datetime):
+        return jsonify({"error": "Not a valid timeslot"}), 400
+
+    #We don't allow a patient to book two appointments for the same doctor/department combo in a single day
     existing = Appointment.query.filter(
         Appointment.patient_id == patient.id,
         Appointment.department_id == availability.department_id,
+        Appointment.doctor_id == availability.doctor_id,
         Appointment.status == AppointmentStatusEnum.booked,
-        func.date(Appointment.appointment_datetime) == appointment_datetime.date()
+        func.date(Appointment.start_datetime) == start_datetime.date()
     ).first()
 
     if existing:
         return jsonify({
-            "error": "You already have an appointment booked for this department on this day"
+            "error": "You already have an appointment booked for this doctor and department on this day"
         }), 409
 
     if patient.is_admitted:
@@ -3015,7 +3033,8 @@ def book():
     new_appointment = Appointment(
         doctor_id=doctor_id,
         patient_id=patient.id,
-        appointment_datetime=appointment_datetime,
+        start_datetime=start_datetime,
+        end_datetime=end_datetime,
         status=AppointmentStatusEnum.booked,
         department_id=availability.department_id
     )
@@ -3045,12 +3064,12 @@ def book():
         print(repr(e.orig))
         error_message = str(e.orig)
 
-        if "unique_doctor_slot" in error_message:
+        if "exclude_doctor_overlapping_appointment" in error_message:
             return jsonify({
                 "error": "Doctor slot already booked"
             }), 409
 
-        elif "unique_patient_slot" in error_message:
+        elif "exclude_patient_overlapping_appointment" in error_message:
             return jsonify({
                 "error": "You already have an appointment at this time"
             }), 409
