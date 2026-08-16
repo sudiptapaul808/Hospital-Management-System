@@ -101,4 +101,92 @@ const showAssign = ref(false)
         @update:modelValue="showAssign = $event"
         @updated="fetchDetails"
     />
+    <div v-if="!isAdmittedFlow">
+        <v-row class="mb-3" align="center" justify="space-between">
+            <v-col cols="auto">
+                <h2>Upcoming Appointments</h2>
+            </v-col>
+        </v-row>
+        <v-table v-if="upcomingAppointments.length">
+            <thead>
+                <tr>
+                    <th>Doctor Name</th>
+                    <th>Department</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="appointment in upcomingAppointments" :key="appointment.id">
+                    <td>{{ appointment.doctor_name }}</td>
+                    <td>{{ appointment.department_name }}</td>
+                    <td>{{ appointment.date }}</td>
+                    <td>{{ appointment.start_time }}</td>
+                    <td>{{ appointment.status }}</td>
+                </tr>
+            </tbody>
+        </v-table>
+        <p v-else class="text-grey">
+            No scheduled appointments
+        </p>
+    </div>
+    <div v-if="!isAdmittedFlow">
+        <v-row class="mb-3" align="center" justify="space-between">
+            <v-col cols="auto">
+                <h2>Passed Appointments</h2>
+            </v-col>
+        </v-row>
+        <v-table v-if="pastAppointments.length">
+            <thead>
+                <tr>
+                    <th>Doctor Name</th>
+                    <th>Department</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="appointment in pastAppointments" :key="appointment.id">
+                    <td>{{ appointment.doctor_name }}</td>
+                    <td>{{ appointment.department_name }}</td>
+                    <td>{{ appointment.date }}</td>
+                    <td>{{ appointment.start_time }}</td>
+                    <td>{{ appointment.status }}</td>
+                </tr>
+            </tbody>
+        </v-table>
+        <p v-else class="text-grey">
+            No appointment history for this patient
+        </p>
+    </div>
+    <div v-if="!isAdmittedFlow">
+        <v-row class="mb-3" align="center" justify="space-between">
+            <v-col cols="auto">
+                <h2>Pending OPD referrals</h2>
+            </v-col>
+        </v-row>
+        <v-table v-if="pendingReferrals.length">
+            <thead>
+                <tr>
+                    <th>Referred By</th>
+                    <th>Referred To</th>
+                    <th>Department</th>
+                    <th>Date of referral</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="referral in pendingReferrals" :key="referral.id">
+                    <td>{{ referral.referred_by_doctor_name}}</td>
+                    <td>{{ referral.referred_to_doctor_name }}</td>
+                    <td>{{ referral.referred_to_department_name }}</td>
+                    <td>{{ referral.referral_date }}</td>
+                </tr>
+            </tbody>
+        </v-table>
+        <p v-else class="text-grey">
+            No pending referrals for the patient
+        </p>
+    </div>
 </template>

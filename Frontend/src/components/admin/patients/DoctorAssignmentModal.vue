@@ -47,7 +47,7 @@ const doctors = ref([])
 const selectDepartment = async (departmentId) => {
     try {
         const res = await api.get(`/api/admin/departments/${departmentId}/doctors`)
-        doctors.value = res.data
+        doctors.value = res.data.doctors
     } catch (err) {
         console.log(err)
     }
@@ -119,8 +119,8 @@ const confirmAssignment = async () => {
             <div v-else-if="selectingDoctors">
                 <v-card-title>Select Doctor</v-card-title>
                 <div class="d-flex flex-wrap ga-2 pa-4">
-                    <v-btn v-for="doctor in doctors" :key="doctor.id" @click="selectedDoctorId = doctor.id" :color="selectedDoctorId === doctor.id ? 'primary': undefined">
-                        {{ doctor.name }}
+                    <v-btn v-for="doctor in doctors" :key="doctor.id" @click="selectedDoctorId = doctor.doctor_id" :color="selectedDoctorId === doctor.doctor_id ? 'primary': undefined">
+                        {{ doctor.doctor_name }}
                     </v-btn>
                 </div>
                 <div class="d-flex justify-end ga-2 pa-4">

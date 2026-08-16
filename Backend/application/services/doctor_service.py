@@ -70,7 +70,7 @@ def create_opd_referral(doctor, patient_id, dept_id, referred_to_doc_id):
         Appointment.patient_id == patient.id,
         Appointment.doctor_id == doctor.id,
         Appointment.status == AppointmentStatusEnum.booked,
-        func.date(Appointment.appointment_datetime) == date.today()
+        func.date(Appointment.start_datetime) == date.today()
     ).first()
 
     if not appointment:
@@ -100,7 +100,7 @@ def create_opd_referral(doctor, patient_id, dept_id, referred_to_doc_id):
     Appointment.query.filter(
         Appointment.patient_id == patient.id, 
         Appointment.doctor_id == doctor.id,
-        func.date(Appointment.appointment_datetime) == date.today(), 
+        func.date(Appointment.start_datetime) == date.today(), 
         Appointment.status == AppointmentStatusEnum.booked
     ).update({
         "status": AppointmentStatusEnum.cancelled

@@ -953,8 +953,8 @@ def admin_view_patient(patient_id):
             joinedload(Appointment.department)
         ).filter(
             Appointment.patient_id == patient.id,
-            Appointment.appointment_datetime <= datetime.today()
-        ).order_by(desc(Appointment.appointment_datetime)).limit(5).all()
+            Appointment.end_datetime <= datetime.today()
+        ).order_by(desc(Appointment.end_datetime)).limit(5).all()
     )
     
     upcoming_appointments = (
@@ -964,8 +964,8 @@ def admin_view_patient(patient_id):
             joinedload(Appointment.department)
         ).filter(
             Appointment.patient_id == patient.id,
-            Appointment.appointment_datetime >= datetime.today()
-        ).order_by(asc(Appointment.appointment_datetime)).all()
+            Appointment.start_datetime >= datetime.today()
+        ).order_by(asc(Appointment.start_datetime)).all()
     )
     
     pending_referrals = (
@@ -976,7 +976,8 @@ def admin_view_patient(patient_id):
             joinedload(Referrals.department)
         ).filter(
             Referrals.patient_id == patient.id,
-            Referrals.referral_status == ReferralStatusEnum.pending
+            Referrals.referral_status == ReferralStatusEnum.pending,
+            Referrals.referral_type == ReferralTypeEnum.OPD
         ).all()
     )
     
@@ -995,7 +996,8 @@ def admin_view_patient(patient_id):
             "doctor_name": p.doctor.user.username,
             "department_id": p.department_id, 
             "department_name": p.department.department_name,
-            "datetime": p.appointment_datetime.isoformat(),
+            "date": p.start_datetime.date().isoformat(),
+            "start_time": p.start_datetime.time().strftime("%H:%M"),
             "status": p.status.value
         })
     
@@ -1009,7 +1011,8 @@ def admin_view_patient(patient_id):
             "doctor_name": p.doctor.user.username,
             "department_id": p.department_id, 
             "department_name": p.department.department_name,
-            "datetime": p.appointment_datetime.isoformat(),
+            "date": p.start_datetime.date().isoformat(),
+            "start_time": p.start_datetime.time().strftime("%H:%M"),
             "status": p.status.value
         })
         
@@ -1022,8 +1025,8 @@ def admin_view_patient(patient_id):
             "referred_by_doctor_name": r.referred_by.user.username,
             "referred_to_department_id": r.referred_to_dept_id,
             "referred_to_department_name": r.department.department_name,
-            "referred_to_doctor_id": r.referred_to_doctor_id if r.referred_to else None,
-            "referred_to_doctor_name": r.referred_to.user.username if r.referred_to else None,
+            "referred_to_doctor_id": r.referred_to_doctor_id,
+            "referred_to_doctor_name": r.referred_to.user.username,
             "referral_date": r.referral_date.isoformat()
         })
         
@@ -1187,7 +1190,7 @@ def admin_edit_patient(patient_id):
         Appointment.query.filter(
             Appointment.patient_id == patient.id,
             Appointment.status == AppointmentStatusEnum.booked,
-            Appointment.appointment_datetime > datetime.now()
+            Appointment.start_datetime > datetime.now()
         ).update({
             "status": AppointmentStatusEnum.cancelled
         })
@@ -1221,7 +1224,7 @@ def toggle_blacklist(user_id):
         
         active_appointments_count = Appointment.query.filter(
             Appointment.doctor_id == doctor.id,
-            Appointment.appointment_datetime >= datetime.now(),
+            Appointment.start_datetime >= datetime.now(),
             Appointment.status == AppointmentStatusEnum.booked
         ).count()
         
@@ -1247,7 +1250,7 @@ def toggle_blacklist(user_id):
         
         active_appointments_count = Appointment.query.filter(
             Appointment.patient_id == patient.id,
-            Appointment.appointment_datetime >= datetime.now(),
+            Appointment.start_datetime >= datetime.now(),
             Appointment.status == AppointmentStatusEnum.booked
         ).count()
         
@@ -1684,13 +1687,13 @@ def doctor_dashboard():
 
     today_count = Appointment.query.filter(
         Appointment.doctor_id == doctor.id,
-        Appointment.appointment_datetime >= start_of_day,
-        Appointment.appointment_datetime < end_of_day
+        Appointment.start_datetime >= start_of_day,
+        Appointment.end_datetime < end_of_day
     ).count()
 
     upcoming_count = Appointment.query.filter(
         Appointment.doctor_id == doctor.id,
-        Appointment.appointment_datetime >= end_of_day
+        Appointment.start_datetime >= end_of_day
     ).count()
 
     assigned_count = AssignedPatient.query.filter(
@@ -1732,11 +1735,11 @@ def current_day_appointments():
         )
         .filter(
             Appointment.doctor_id == doctor.id,
-            Appointment.appointment_datetime >= start_of_day,
-            Appointment.appointment_datetime < end_of_day,
+            Appointment.start_datetime >= start_of_day,
+            Appointment.end_datetime < end_of_day,
             Appointment.status == AppointmentStatusEnum.booked
         )
-        .order_by(Appointment.appointment_datetime.asc())
+        .order_by(Appointment.start_datetime.asc())
         .paginate(page=page, per_page=per_page, error_out=False)
     )
     
@@ -1744,7 +1747,7 @@ def current_day_appointments():
         "data": [
             {
                 "id": appt.id,
-                "datetime": appt.appointment_datetime.isoformat(),
+                "datetime": appt.start_datetime.isoformat(),
                 "status": appt.status.value,
                 "patient": {
                     "id": appt.patient.id,
@@ -1786,9 +1789,9 @@ def doctor_upcoming_appointments():
         )
         .filter(
             Appointment.doctor_id == doctor.id,
-            Appointment.appointment_datetime >= end_of_day
+            Appointment.start_datetime >= end_of_day
         )
-        .order_by(Appointment.appointment_datetime.asc())
+        .order_by(Appointment.start_datetime.asc())
         .paginate(page=page, per_page=per_page, error_out=False)
     )
     
@@ -1796,7 +1799,7 @@ def doctor_upcoming_appointments():
         "data": [
             {
                 "id": appt.id,
-                "datetime": appt.appointment_datetime.isoformat(),
+                "datetime": appt.start_datetime.isoformat(),
                 "status": appt.status.value,
                 "patient": {
                     "id": appt.patient.id,
@@ -1928,7 +1931,7 @@ def update_history_opd(patient_id):
         Appointment.doctor_id == doctor.id,
         Appointment.patient_id == patient.id,
         Appointment.status == AppointmentStatusEnum.booked,
-        func.date(Appointment.appointment_datetime) == today
+        func.date(Appointment.start_datetime) == today
     ).first()
 
     if not appointment:
@@ -2136,7 +2139,7 @@ def get_doctor_availabilities_doctor_side():
     
     today = datetime.now().date()
     start_date = today + timedelta(days=1)
-    end_date = today + timedelta(days=6)
+    end_date = today + timedelta(days=7)
     
     availabilities = DoctorAvailability.query.filter(
         DoctorAvailability.doctor_id == doctor.id,
@@ -2227,6 +2230,21 @@ def doctor_create_availability():
     
     if end_time <= start_time:
         return jsonify({"error": "End time must be later than start time"}), 400
+
+
+    #Date check
+    today = datetime.now().date()
+    max_date = today + timedelta(days = 7)
+
+    if date < today:
+        return jsonify({"error": "Date cannot be of the past"}), 400
+
+    if date > max_date:
+        return jsonify({"error": "Availability can only be set up to 7 days in advance"}), 400
+
+    #passed time check for the same day (this is for not frontend requests but if someone did curl or postman)
+    if date == today and start_time <= datetime.now().time():
+        return jsonify({"error": "Availbility start time cannot be the past"}), 400
 
     #We wanna make sure that the time slot that came is divisible by 30, we don't want an extra 17 minute to hand off the end
     #Make it robust, the doctor can only make slots of duration 30, 60, 120, 240 minutes and so on
@@ -2327,8 +2345,8 @@ def doctor_update_availability(availability_id):
     end_dt = datetime.combine(slot.date, slot.end_time)
     conflict = Appointment.query.filter(
         Appointment.doctor_id == slot.doctor_id,
-        Appointment.appointment_datetime >= start_dt,
-        Appointment.appointment_datetime < end_dt,
+        Appointment.start_datetime >= start_dt,
+        Appointment.start_datetime < end_dt,
         Appointment.department_id == slot.department_id,
         Appointment.status == AppointmentStatusEnum.booked
     ).first()
@@ -2382,8 +2400,8 @@ def doctor_delete_availability(availability_id):
 
     conflict = Appointment.query.filter(
         Appointment.doctor_id == slot.doctor_id,
-        Appointment.appointment_datetime >= start_dt,
-        Appointment.appointment_datetime < end_dt,
+        Appointment.start_datetime >= start_dt,
+        Appointment.start_datetime < end_dt,
         Appointment.department_id == slot.department_id,
         Appointment.status == AppointmentStatusEnum.booked
     ).first()
@@ -2582,9 +2600,9 @@ def patient_dash_appointments_tab():
         joinedload(Appointment.department)
     ).filter(
         Appointment.patient_id == patient.id,
-        func.date(Appointment.appointment_datetime) >= date.today(),
+        func.date(Appointment.start_datetime) >= date.today(),
         Appointment.status != AppointmentStatusEnum.cancelled
-    ).order_by(Appointment.appointment_datetime.asc()).limit(5).all()
+    ).order_by(Appointment.start_datetime.asc()).limit(5).all()
     
     appointment_list = []
     for a in appointments:
@@ -2593,8 +2611,8 @@ def patient_dash_appointments_tab():
             "doctor_id": a.doctor.id,
             "doctor_name": a.doctor.user.username,
             "department": a.department.department_name,
-            "date": a.appointment_datetime.date().isoformat(),
-            "time": a.appointment_datetime.time().strftime("%I:%M %p"),
+            "date": a.start_datetime.date().isoformat(),
+            "time": a.start_datetime.time().strftime("%I:%M %p"),
             "status": a.status.value
         })
         
@@ -2812,7 +2830,7 @@ def get_doctor_availabilities_patient_side(doctor_id):
     
     today = datetime.now().date()
     start_date = today + timedelta(days=1)
-    end_date = today + timedelta(days=6)
+    end_date = today + timedelta(days=7)
     
     availabilities = DoctorAvailability.query.filter(
         DoctorAvailability.doctor_id == doctor.id,
@@ -2910,12 +2928,12 @@ def get_availability_slots_patient_side(availability_id):
     appointments = Appointment.query.filter(
         Appointment.doctor_id == availability.doctor_id,
         Appointment.department_id == availability.department_id,
-        db.func.date(Appointment.appointment_datetime) == date,
+        db.func.date(Appointment.start_datetime) == date,
         Appointment.status == AppointmentStatusEnum.booked
     ).all()
     
     booked_start_times = {
-        appt.appointment_datetime.time() for appt in appointments
+        appt.start_datetime.time() for appt in appointments
     } #set
     
     slots = []
@@ -2983,6 +3001,9 @@ def book():
     doctor_id = data.get("doctor_id")
     start_datetime_str = data.get("start_datetime")
     end_datetime_str = data.get("end_datetime")
+
+    print(start_datetime_str)
+    print(end_datetime_str)
     
     start_datetime = datetime.fromisoformat(start_datetime_str)
     end_datetime = datetime.fromisoformat(end_datetime_str)
@@ -2998,7 +3019,7 @@ def book():
         DoctorAvailability.doctor_id == doctor_id,
         DoctorAvailability.date == start_datetime.date(),
         DoctorAvailability.start_time <= start_datetime.time(),
-        DoctorAvailability.end_time > end_datetime.time()
+        DoctorAvailability.end_time >= end_datetime.time()
     ).first()    
 
     # print(availability)

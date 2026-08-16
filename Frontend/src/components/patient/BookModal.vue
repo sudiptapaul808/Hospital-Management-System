@@ -12,7 +12,8 @@ const props = defineProps({
     slot: Object
 })
 
-const appointmentDateTime = `${props.date}T${props.slot.start_time}:00`
+const startDateTime = `${props.date}T${props.slot.start_time}:00`
+const endDateTime = `${props.date}T${props.slot.end_time}:00`
 
 const emit = defineEmits(['update:modelValue', 'booked'])
 
@@ -28,10 +29,12 @@ const book = async() => {
     try {
         await api.patch(`/api/patient/book`, {
             doctor_id: props.doctorId,
-            appointment_datetime: appointmentDateTime
+            start_datetime: startDateTime,
+            end_datetime: endDateTime
         })
         emit('booked')
         emit('update:modelValue', false)
+        console.log("emitted flase")
     } catch (err) {
         error.value = err.response?.data?.error || "Something went wrong"
     } finally {
@@ -40,10 +43,7 @@ const book = async() => {
 }
 
 onMounted(() => {
-    console.log("mounted")
-    console.log('props=', props)
-    console.log('modelValue=', props.modelValue)
-    console.log(appointmentDateTime)
+    
 })
 
 </script>
