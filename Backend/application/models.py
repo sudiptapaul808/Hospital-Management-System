@@ -125,7 +125,7 @@ class Referrals(db.Model):
     patient_id = db.Column(db.Integer, db.ForeignKey("patient.id"), nullable = False)
     referred_by_doctor_id = db.Column(db.Integer, db.ForeignKey("doctor.id"), nullable = False)
     referred_to_dept_id = db.Column(db.Integer, db.ForeignKey("specialization_dept.id"), nullable = False) 
-    referred_to_doctor_id = db.Column(db.Integer, db.ForeignKey("doctor.id"), nullable = True) #Might be null in case of emergency referrals
+    referred_to_doctor_id = db.Column(db.Integer, db.ForeignKey("doctor.id"), nullable = True)
     referral_date = db.Column(db.DateTime, nullable = False)
     
     #flags

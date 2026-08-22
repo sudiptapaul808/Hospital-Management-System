@@ -31,10 +31,19 @@ const completeReferral = async() => {
     loading.value = true
     error.value = ''
     try {
-        await api.patch(`/api/refer_OPD_patient/${patientId}`, {
+        if (patientStore.patientDetails.is_admitted) {
+            //IPD referral call
+            await api.patch(`/api/refer_IPD_patients/${patientId}`, {
+            referred_to_dept_id: props.referredToDepartmentId,
+            referred_to_doctor_id: props.referredToDoctorId
+            })
+        } else {
+            //OPD referral call
+            await api.patch(`/api/refer_OPD_patient/${patientId}`, {
             referred_to_dept_id: props.referredToDepartmentId,
             referred_to_doctor_id: props.referredToDoctorId
         })
+        }
         emit('update:modelValue', false)
         await router.push('/doctor/appointments-today')
     } catch (err) {

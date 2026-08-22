@@ -57,6 +57,10 @@ const routes = [
       {
         path: 'doctor-availability/:doctorId/:date', //This id is doctor id, and a specific date of that doctor's availability
         component: () => import('../views/admin/AvailabilityByDateAdminSide.vue')
+      },
+      {
+        path: 'pending-ipd-referrals',
+        component: () => import('../views/admin/PendingIpdReferral.vue')
       }
     ]
   },

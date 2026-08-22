@@ -227,15 +227,6 @@ def admitted_patients():
     ).filter(
         Patient.is_admitted == True
     ).paginate(page=patients_page, per_page=per_page, error_out=False)
-    
-    pending_referral_patient_ids = {  #here we're making a set to check which patient id's have pending ipd referral. 
-        referral.patient_id
-        for referral in
-        Referrals.query.filter(
-            Referrals.referral_type == ReferralTypeEnum.IPD,
-            Referrals.referral_status == ReferralStatusEnum.pending
-        ).all()
-    }
 
     data = []
     for p in admitted_patients.items:
@@ -243,8 +234,7 @@ def admitted_patients():
             "patient_id": p.id,
             "patient_name": p.user.username,
             "age": p.age,
-            "gender": p.gender,
-            "is_referral_pending": p.id in pending_referral_patient_ids
+            "gender": p.gender
         })
 
     response = {
@@ -375,6 +365,79 @@ def admin_departments():
     cache_set(cache_key, response)
     
     return jsonify(response)
+
+
+# admitted_patients = Patient.query.options(
+#         joinedload(Patient.user),
+#         joinedload(Patient.assigned_to)
+#             .joinedload(AssignedPatient.doctor)
+#             .joinedload(Doctor.user)
+#     ).filter(
+#         Patient.is_admitted == True
+#     ).paginate(page=patients_page, per_page=per_page, error_out=False)
+@app.route("/api/admin_dashboard/pending_ipd_referrals", methods=["GET"])
+@role_required("admin")
+def pending_ipd_referrals_approval():
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", 10))
+
+    referrals = Referrals.query.options(
+        joinedload(Referrals.patient).joinedload(Patient.user),
+        joinedload(Referrals.patient).joinedload(Patient.assigned_to).joinedload(AssignedPatient.doctor).joinedload(Doctor.user),
+        joinedload(Referrals.referred_to).joinedload(Doctor.user),
+        joinedload(Referrals.department)
+    ).filter(
+        Referrals.referral_status == ReferralStatusEnum.pending,
+        Referrals.referral_type == ReferralTypeEnum.IPD
+    ).paginate(page=page, per_page=per_page, error_out=False)
+
+    data = []
+    for referral in referrals.items:
+        data.append({
+            "referral_id": referral.id,
+            "patient_id": referral.patient.id,
+            "patient_name": referral.patient.user.username,
+            "assigned_doctor_id": referral.patient.assigned_to.doctor.id,
+            "assigned_doctor_name": referral.patient.assigned_to.doctor.user.username,
+            "referred_to_department_id": referral.department.id,
+            "referred_to_department_name": referral.department.department_name,
+            "referred_to_doctor_id": referral.referred_to.id,
+            "referred_to_doctor_name": referral.referred_to.user.username
+        })
+
+    response = {
+        "referrals": data, 
+        "pagination": {
+            "page": referrals.page,
+            "per_page": referrals.per_page,
+            "total": referrals.total
+        }
+    }
+
+    return jsonify(response), 200
+
+
+# data = []
+#     for p in admitted_patients.items:
+#         data.append({
+#             "patient_id": p.id,
+#             "patient_name": p.user.username,
+#             "age": p.age,
+#             "gender": p.gender
+#         })
+
+#     response = {
+#         "patients": data,
+#         "pagination": {
+#             "page": admitted_patients.page,
+#             "per_page": admitted_patients.per_page,
+#             "total": admitted_patients.total
+#         }
+#     }
+    
+#     cache_set(cache_key, response)
+    
+#     return jsonify(response), 200
 
 # @app.route("/api/admin_dashboard/opd_referrals", methods=["GET"])
 # @role_required("admin")
@@ -1356,100 +1419,100 @@ def assign_patient(patient_id):
         db.session.rollback()
         return jsonify({"error": "Database error"}), 500
     
-@app.route("/api/admin/ipd_referral_approval", methods=["GET"])
-@role_required("admin")
-def pending_referral_approvals():
-    page = int(request.args.get("page", 1))
-    per_page = int(request.args.get("per_page", 10))
+# @app.route("/api/admin/ipd_referral_approval", methods=["GET"])
+# @role_required("admin")
+# def pending_referral_approvals():
+#     page = int(request.args.get("page", 1))
+#     per_page = int(request.args.get("per_page", 10))
     
-    pending_approvals = Referrals.query.options(
-        joinedload(Referrals.patient)
-            .joinedload(Patient.user),
-        joinedload(Referrals.referred_by)
-            .joinedload(Doctor.user),
-        joinedload(Referrals.referred_to)
-            .joinedload(Doctor.user),
-        joinedload(Referrals.department)
-    ).filter(
-        Referrals.referral_type == ReferralTypeEnum.IPD,
-        Referrals.referral_status == ReferralStatusEnum.pending
-    ).order_by(
-        Referrals.referral_date.asc()
-    ).paginate(page=page, per_page=per_page, error_out=False)
+#     pending_approvals = Referrals.query.options(
+#         joinedload(Referrals.patient)
+#             .joinedload(Patient.user),
+#         joinedload(Referrals.referred_by)
+#             .joinedload(Doctor.user),
+#         joinedload(Referrals.referred_to)
+#             .joinedload(Doctor.user),
+#         joinedload(Referrals.department)
+#     ).filter(
+#         Referrals.referral_type == ReferralTypeEnum.IPD,
+#         Referrals.referral_status == ReferralStatusEnum.pending
+#     ).order_by(
+#         Referrals.referral_date.asc()
+#     ).paginate(page=page, per_page=per_page, error_out=False)
     
-    data = [
-        {
-            "referral_id": a.id,
-            "patient_id": a.patient_id,
-            "patient_name": a.patient.user.username,
-            "referred_by_doctor_id": a.referred_by_doctor_id,
-            "referred_by_doctor_name": a.referred_by.user.username,
-            "referred_to_dept_id": a.referred_to_dept_id,
-            "referred_to_dept_name": a.department.department_name,
-            "referred_to_doctor_id": a.referred_to_doctor_id,
-            "referred_to_doctor_name": a.referred_to.user.username if a.referred_to else None,
-            "referral_date": a.referral_date.isoformat() if a.referral_date else None
-        } for a in pending_approvals.items
-    ]
+#     data = [
+#         {
+#             "referral_id": a.id,
+#             "patient_id": a.patient_id,
+#             "patient_name": a.patient.user.username,
+#             "referred_by_doctor_id": a.referred_by_doctor_id,
+#             "referred_by_doctor_name": a.referred_by.user.username,
+#             "referred_to_dept_id": a.referred_to_dept_id,
+#             "referred_to_dept_name": a.department.department_name,
+#             "referred_to_doctor_id": a.referred_to_doctor_id,
+#             "referred_to_doctor_name": a.referred_to.user.username if a.referred_to else None,
+#             "referral_date": a.referral_date.isoformat() if a.referral_date else None
+#         } for a in pending_approvals.items
+#     ]
     
-    return jsonify({
-        "data": data,
-        "pagination": {
-            "page": pending_approvals.page,
-            "per_page": pending_approvals.per_page,
-            "total": pending_approvals.total
-        }
-    })
+#     return jsonify({
+#         "data": data,
+#         "pagination": {
+#             "page": pending_approvals.page,
+#             "per_page": pending_approvals.per_page,
+#             "total": pending_approvals.total
+#         }
+#     })
     
-@app.route("/api/check_ipd_referral/<int:referral_id>", methods=["GET"])
-def check_ipd_referral(referral_id):
-    referral = Referrals.query.options(
-        joinedload(Referrals.patient).joinedload(Patient.user),
-        joinedload(Referrals.referred_by).joinedload(Doctor.user).joinedload(Doctor.departments),
-        joinedload(Referrals.referred_to).joinedload(Doctor.user),
-        joinedload(Referrals.department)
-    ).filter_by(id=referral_id).first_or_404()
+# @app.route("/api/check_ipd_referral/<int:referral_id>", methods=["GET"])
+# def check_ipd_referral(referral_id):
+#     referral = Referrals.query.options(
+#         joinedload(Referrals.patient).joinedload(Patient.user),
+#         joinedload(Referrals.referred_by).joinedload(Doctor.user).joinedload(Doctor.departments),
+#         joinedload(Referrals.referred_to).joinedload(Doctor.user),
+#         joinedload(Referrals.department)
+#     ).filter_by(id=referral_id).first_or_404()
     
-    if referral.referral_type != ReferralTypeEnum.IPD or referral.referral_status != ReferralStatusEnum.pending:
-        return jsonify({"error": "Wrong patient"}), 400
+#     if referral.referral_type != ReferralTypeEnum.IPD or referral.referral_status != ReferralStatusEnum.pending:
+#         return jsonify({"error": "Wrong patient"}), 400
     
-    docs_in_department = doctors_belonging_from_the_department(referral.referred_to_dept_id)
+#     docs_in_department = doctors_belonging_from_the_department(referral.referred_to_dept_id)
     
-    response = {
-        "referral": {
-            "referral_id": referral.id,
-            "referral_date": referral.referral_date.isoformat(),
+#     response = {
+#         "referral": {
+#             "referral_id": referral.id,
+#             "referral_date": referral.referral_date.isoformat(),
 
-            "patient": {
-                "id": referral.patient_id,
-                "name": referral.patient.user.username,
-                "age": referral.patient.age,
-                "gender": referral.patient.gender
-            },
+#             "patient": {
+#                 "id": referral.patient_id,
+#                 "name": referral.patient.user.username,
+#                 "age": referral.patient.age,
+#                 "gender": referral.patient.gender
+#             },
 
-            "from_doctor": {
-                "id": referral.referred_by_doctor_id,
-                "name": referral.referred_by.user.username,
-                "department": [dept.department_name for dept in referral.referred_by.departments]
-            },
+#             "from_doctor": {
+#                 "id": referral.referred_by_doctor_id,
+#                 "name": referral.referred_by.user.username,
+#                 "department": [dept.department_name for dept in referral.referred_by.departments]
+#             },
 
-            "requested_department": {
-                "id": referral.referred_to_dept_id,
-                "name": referral.department.department_name
-            },
+#             "requested_department": {
+#                 "id": referral.referred_to_dept_id,
+#                 "name": referral.department.department_name
+#             },
 
-            "suggested_doctor": {
-                "id": referral.referred_to_doctor_id,
-                "name": referral.referred_to.user.username if referral.referred_to else None
-            }
-        },
+#             "suggested_doctor": {
+#                 "id": referral.referred_to_doctor_id,
+#                 "name": referral.referred_to.user.username if referral.referred_to else None
+#             }
+#         },
 
-        "available_doctors": docs_in_department
-    }
+#         "available_doctors": docs_in_department
+#     }
     
-    return jsonify(response)
+#     return jsonify(response)
 
-@app.route("/api/admin/ipd_referral/complete/<int:referral_id>", methods=["PATCH"])
+@app.route("/api/admin/ipd_referral/<int:referral_id>/complete", methods=["PATCH"])
 @role_required("admin")
 def complete_ipd_referral(referral_id):
     referral = Referrals.query.get_or_404(referral_id)
@@ -1503,25 +1566,25 @@ def complete_ipd_referral(referral_id):
         referral.referral_status = ReferralStatusEnum.completed
         
     #else we get the payload that will be sent by the admin
-    else:
-        data = request.json
+    # else:
+    #     data = request.json
         
-        if not data:
-            return jsonify({"error": "Missing payload"}), 400
+    #     if not data:
+    #         return jsonify({"error": "Missing payload"}), 400
         
-        doctor_id = data.get("admin_doctor_selection")
-        if not doctor_id:
-            return jsonify({"error": "Doctor selection required"}), 400
-        selected_doctor = Doctor.query.get_or_404(doctor_id)
+    #     doctor_id = data.get("admin_doctor_selection")
+    #     if not doctor_id:
+    #         return jsonify({"error": "Doctor selection required"}), 400
+    #     selected_doctor = Doctor.query.get_or_404(doctor_id)
         
-        belongs = DoctorDepartment.query.filter(
-            DoctorDepartment.doctor_id == selected_doctor.id,
-            DoctorDepartment.department_id == department.id
-        ).first()
-        if not belongs:
-            return jsonify({"error": "The doctor selected doesn't belong to the suggested department"}), 400
+    #     belongs = DoctorDepartment.query.filter(
+    #         DoctorDepartment.doctor_id == selected_doctor.id,
+    #         DoctorDepartment.department_id == department.id
+    #     ).first()
+    #     if not belongs:
+    #         return jsonify({"error": "The doctor selected doesn't belong to the suggested department"}), 400
         
-        assignment.doctor_id = selected_doctor.id
+    #     assignment.doctor_id = selected_doctor.id
         
         #mark the referral as completed
         referral.referral_status = ReferralStatusEnum.completed
@@ -1876,11 +1939,12 @@ def view_patient_details(patient_id):
             "id": patient.id,
             "name": patient.username,
             "age": patient.patient.age,
-            "gender": patient.patient.gender
+            "gender": patient.patient.gender,
+            "is_admitted": patient.patient.is_admitted
         },
         "pending_ipd_referral": {
             "id": pending_ipd_referral.id if pending_ipd_referral else None,
-            "status": pending_ipd_referral.referral_status if pending_ipd_referral else None,
+            "status": pending_ipd_referral.referral_status.value if pending_ipd_referral else None,
             "referred_to_doctor_name": pending_ipd_referral.referred_to.user.username if pending_ipd_referral else None,
         }
     })
@@ -2459,6 +2523,7 @@ def discharge_assigned_patient(patient_id):
 @role_required("doctor")
 @blacklist_check
 def refer_IPD_patients(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
     doctor = current_user.doctor
     data = request.json
     
@@ -2468,7 +2533,7 @@ def refer_IPD_patients(patient_id):
     dept_id = data.get("referred_to_dept_id")
     referred_to_doc_id = data.get("referred_to_doctor_id")
     
-    response, status = create_ipd_referral(doctor, patient_id, dept_id, referred_to_doc_id)
+    response, status = create_ipd_referral(doctor, patient.id, dept_id, referred_to_doc_id)
     
     return jsonify(response), status
     

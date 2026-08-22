@@ -59,5 +59,15 @@ const route = useRoute()
       </template>
     </v-list-item>
 
+    <v-list-item
+      active-color="white"  
+      title="Pending Referrals IPD"
+      to="/admin/pending-ipd-referrals"
+    >
+      <template #prepend>
+        <v-icon>mdi-hospital-building</v-icon>
+      </template>
+    </v-list-item>
+
   </v-navigation-drawer>
 </template>
