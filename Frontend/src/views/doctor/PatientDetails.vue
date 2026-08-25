@@ -12,7 +12,7 @@ import CompleteAppointmentModal from '../../components/doctor/CompleteAppointmen
 import AddHistoryModalIPD from '../../components/doctor/AddHistoryModalIPD.vue';
 
 const route = useRoute()
-const id = route.params.id  //The appointment id
+const id = route.params.id //Patient Id
 const patientStore = usePatientStore()
 
 const patientDetails = ref(null)
@@ -56,7 +56,7 @@ const showComplete = ref(false)
 //Referral button route to Department list=============================================
 const goToDepartmentList = () => {
     router.push({
-        path: '/doctor/department-list'
+        path: `/doctor/department-list/${id}`  //Sending patient id along with the route
     })
 }
 </script>

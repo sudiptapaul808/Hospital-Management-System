@@ -1,19 +1,18 @@
 <script setup>
-import api from '../../services/api'
-import { ref } from 'vue'
+import api from '../../services/api.js'
+import { ref, onMounted } from 'vue'
 import router from '../../router/index.js';
-import { usePatientStore } from '../../stores/patient.js';
+
+const admissionStatus = ref('')
 
 const props = defineProps({
     modelValue: Boolean,
+    patientId: Number,
     referredToDepartmentId: Number,
     referredToDepartmentName: String,
     referredToDoctorId: Number,
     referredToDoctorName: String
 })
-
-const patientStore = usePatientStore()
-const patientId = patientStore.patientDetails.id
 
 const emit = defineEmits(['update:modelValue'])
 
@@ -31,27 +30,45 @@ const completeReferral = async() => {
     loading.value = true
     error.value = ''
     try {
-        if (patientStore.patientDetails.is_admitted) {
+        if (admissionStatus.value) {
             //IPD referral call
-            await api.patch(`/api/refer_IPD_patients/${patientId}`, {
+            await api.patch(`/api/refer_IPD_patients/${props.patientId}`, {
             referred_to_dept_id: props.referredToDepartmentId,
             referred_to_doctor_id: props.referredToDoctorId
             })
         } else {
             //OPD referral call
-            await api.patch(`/api/refer_OPD_patient/${patientId}`, {
+            await api.patch(`/api/refer_OPD_patient/${props.patientId}`, {
             referred_to_dept_id: props.referredToDepartmentId,
             referred_to_doctor_id: props.referredToDoctorId
         })
         }
         emit('update:modelValue', false)
-        await router.push('/doctor/appointments-today')
+        if (admissionStatus.value) {
+            await router.push('/doctor/assigned-patients')
+        } else {
+            await router.push('/doctor/appointments-today')
+        }
     } catch (err) {
         error.value = err.response?.data?.error || "Something went wrong"
     } finally {
         loading.value = false
     }
 }
+
+//OnMounted we fetch the admission status of the patient so that based on that we can call either opd or ipd============
+const fetchAdmissionStatus = async() => {
+    try {
+        const res = await api.get(`/api/${props.patientId}/admission_status`)
+        admissionStatus.value = res.data.is_admitted
+    } catch (err) {
+        console.log(err)
+    }
+}
+
+onMounted(() => {
+    fetchAdmissionStatus()
+})
 </script>
 
 <template>

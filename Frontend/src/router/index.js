@@ -102,11 +102,11 @@ const routes = [
         component: () => import('../views/doctor/AvailabilityByDate.vue')
       },
       {
-        path: 'department-list',
+        path: 'department-list/:patientId',
         component: () => import('../views/doctor/DepartmentList.vue')
       },
       {
-        path: 'doctors-from-department/:departmentId',
+        path: 'doctors-from-department/:departmentId/:patientId',
         component: () => import('../views/doctor/DoctorListFromDepartment.vue')
       }
     ]

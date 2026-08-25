@@ -63,7 +63,7 @@ const goToDoctor = (id) => {
                     <td>{{ appointment.date }}</td>
                     <td>{{ appointment.time }}</td>
                     <td>{{ appointment.status }}</td>
-                    <td><v-btn @click="openCancel(appointment.appointment_id)">Cancel</v-btn></td>
+                    <td><v-btn :disabled="appointment.status !== 'booked'" @click="openCancel(appointment.appointment_id)">Cancel</v-btn></td>
                 </tr>
             </tbody>
         </v-table>

@@ -2176,7 +2176,16 @@ def doctors_from_the_department(department_id):
     data = doctors_belonging_from_the_department(department_id)
     
     return jsonify(data)
-    
+
+#To get if the patient is admitted or not, so that one referral modal in the frontend can use this in the if else statement and call OPR ref or IPD ref
+@app.route("/api/<int:patient_id>/admission_status", methods=["GET"])
+@role_required("doctor")
+@blacklist_check
+def admission_status(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
+    is_admitted = patient.is_admitted
+    return jsonify({"is_admitted": is_admitted}), 200
+
 #Now upon clicking the doctor name, we refer the patient
 @app.route("/api/refer_OPD_patient/<int:patient_id>", methods=["PATCH"])
 @role_required("doctor")

@@ -2,11 +2,12 @@
 import api from '../../services/api'
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router'
-import ReferralModalOpd from '../../components/doctor/ReferralModalOpd.vue';
+import ReferralModalOpd from '../../components/doctor/ReferralModal.vue';
 
 
 const route = useRoute()
 const departmentId = route.params.departmentId
+const patientId = route.params.patientId
 const departmentName = ref(null)
 const doctors = ref([])
 
@@ -64,6 +65,7 @@ const showReferralModal = (id, name) => {
     <ReferralModalOpd 
         v-if="showReferral"
         v-model="showReferral"
+        :patient-id="patientId"
         :referred-to-department-id="departmentId"
         :referred-to-department-name="departmentName"
         :referred-to-doctor-id="referToDoctorId"

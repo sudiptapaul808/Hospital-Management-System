@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import api from '../../services/api'
 import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue';
+import IPDReferralCancelModal from '../../components/admin/patients/IPDReferralCancelModal.vue';
 
 const route = useRoute()
 const router = useRouter()
@@ -69,11 +70,17 @@ onMounted(() => {
     fetchReferrals()
 })
 
+const selectedReferralId = ref('')
+
 //Confirmation modal controls =========================================================================================
 const showConfirm = ref(false)
 
 //Cancellation modal controls =========================================================================================
 const showCancel = ref(false)
+const openCancel = (referralId) => {
+    selectedReferralId.value = referralId
+    showCancel.value = true
+}
 </script>
 
 <template>
@@ -103,7 +110,7 @@ const showCancel = ref(false)
                         <v-btn @click="showConfirm = true">
                             Confirm
                         </v-btn>
-                        <v-btn @click="showCancel = true">
+                        <v-btn @click="openCancel(referral.referral_id)">
                             Cancel
                         </v-btn>
                     </td>
@@ -133,5 +140,13 @@ const showCancel = ref(false)
             Next
         </v-btn>
         </v-row>
+    </div>
+    <div class="d-flex justify-end ga-2 mt-4">
+        <IPDReferralCancelModal 
+            v-if="showCancel"
+            v-model="showCancel"
+            :referral-id="selectedReferralId"
+            @cancelled="fetchReferrals"
+        />
     </div>
 </template>
