@@ -1548,7 +1548,7 @@ def complete_ipd_referral(referral_id):
         referred_to_doctor = Doctor.query.get_or_404(referral.referred_to_doctor_id)
         belongs = DoctorDepartment.query.filter(
             DoctorDepartment.doctor_id == referred_to_doctor.id,
-            DoctorDepartment.department_id == department.id
+            DoctorDepartment.dept_id == department.id
         ).first() #This prevents loading everything
         
         if not belongs:
@@ -1587,7 +1587,7 @@ def complete_ipd_referral(referral_id):
     #     assignment.doctor_id = selected_doctor.id
         
         #mark the referral as completed
-        referral.referral_status = ReferralStatusEnum.completed
+        # referral.referral_status = ReferralStatusEnum.completed
         
     try:
         db.session.commit()

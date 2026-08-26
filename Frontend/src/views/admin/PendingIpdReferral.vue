@@ -4,6 +4,7 @@ import api from '../../services/api'
 import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue';
 import IPDReferralCancelModal from '../../components/admin/patients/IPDReferralCancelModal.vue';
+import IPDReferralApprovalModal from '../../components/admin/patients/IPDReferralApprovalModal.vue';
 
 const route = useRoute()
 const router = useRouter()
@@ -72,14 +73,18 @@ onMounted(() => {
 
 const selectedReferralId = ref('')
 
-//Confirmation modal controls =========================================================================================
-const showConfirm = ref(false)
-
 //Cancellation modal controls =========================================================================================
 const showCancel = ref(false)
 const openCancel = (referralId) => {
     selectedReferralId.value = referralId
     showCancel.value = true
+}
+
+//approval modal controls======================================================================================
+const showConfirm = ref(false)
+const openConfirm = (referralId) => {
+    selectedReferralId.value = referralId
+    showConfirm.value = true
 }
 </script>
 
@@ -107,7 +112,7 @@ const openCancel = (referralId) => {
                     <td>{{ referral.referred_to_department_name }}</td>
                     <td>{{ referral.referred_to_doctor_name }}</td>
                     <td>
-                        <v-btn @click="showConfirm = true">
+                        <v-btn @click="openConfirm(referral.referral_id)">
                             Confirm
                         </v-btn>
                         <v-btn @click="openCancel(referral.referral_id)">
@@ -147,6 +152,12 @@ const openCancel = (referralId) => {
             v-model="showCancel"
             :referral-id="selectedReferralId"
             @cancelled="fetchReferrals"
+        />
+        <IPDReferralApprovalModal 
+            v-if="showConfirm"
+            v-model="showConfirm"
+            :referral-id="selectedReferralId"
+            @approved="fetchReferrals"
         />
     </div>
 </template>
