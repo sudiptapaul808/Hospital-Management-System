@@ -8,9 +8,9 @@ const route = useRoute()
 const router = useRouter()
 
 const loading = ref(false)
-const departments = ref([])
+const doctors = ref([])
 
-//Pagination controls===============================================================================================
+//Pagination controls======================================================================================================
 const page = ref(Number(route.query?.page) || 1)
 const perPage = ref(10)
 const total = ref(0)
@@ -28,7 +28,7 @@ const nextPage = () => {
                 page: page.value
             }
         })
-        fetchDepartments()
+        fetchDoctors()
     }
 }
 const prevPage = () => {
@@ -40,37 +40,37 @@ const prevPage = () => {
                 page: page.value
             }
         })
-        fetchDepartments()
+        fetchDoctors()
     }
 }
 
-//Fetch Departments========================================================================================================
-const fetchDepartments = async() => {
+//Fetch Doctor list========================================================================================================
+const fetchDoctors = async() => {
     if (loading.value) return
     loading.value = true
     try {
-        const res = await api.get(`/api/patient/department_list`, {
+        const res = await api.get(`/api/patient/doctors_tab`, {
             params: {
                 page: page.value,
                 per_page: perPage.value
             }
         })
-        departments.value = res.data.departments.departments
-        total.value = res.data.departments.pagination.total
+        console.log(res)
+        doctors.value = res.data.doctors.data
+        total.value = res.data.doctors.pagination.total
     } catch (err) {
-        console.log(err)
+
     } finally {
         loading.value = false
     }
 }
 
 onMounted(() => {
-    fetchDepartments()
+    fetchDoctors()
 })
 
-//View Department details========================================================================================
-const goToDepartment = (id) => {
-    router.push(`/patient/departments/${id}`)
+const goToDoctor = (id) => {
+    router.push(`/patient/doctor-departments/${id}`)
 }
 </script>
 
@@ -78,20 +78,22 @@ const goToDepartment = (id) => {
     <div>
         <v-row class="mb-3" align="center" justify="space-between">
             <v-col cols="auto">
-                <h2>Departments</h2>
+                <h2>Doctors</h2>
             </v-col>
         </v-row>
         <v-table>
             <thead>
                 <tr>
-                <th>Department Name</th>
+                    <th>Name</th>
+                    <th>Departments</th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="department in departments" :key="department.id">
-                    <td>{{ department.department_name }}</td>
+                <tr v-for="doctor in doctors" :key="doctor.doctor_id">
+                    <td>{{ doctor.doctor_name }}</td>
+                    <td>{{ doctor.department_names.join(', ') }}</td>
                     <td class="text-right">
-                        <v-btn @click="goToDepartment(department.id)">View</v-btn>
+                        <v-btn @click="goToDoctor(doctor.doctor_id)">View</v-btn>
                     </td>
                 </tr>
             </tbody>

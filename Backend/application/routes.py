@@ -1340,6 +1340,7 @@ def toggle_blacklist(user_id):
         cache_delete("admin_summary")
         cache_delete_pattern("admin_doctors_page_*")
         cache_delete_pattern("admin_patients_page_*")
+        cache_delete_pattern("patient_doctors_page_*")
         return jsonify({
             "message": f"User {action} successfully",
             "user": {
@@ -2703,7 +2704,10 @@ def patient_dash_appointments_tab():
     ).filter(
         Referrals.patient_id == patient.id,
         Referrals.referral_type == ReferralTypeEnum.OPD,
-        Referrals.referral_status == ReferralStatusEnum.pending
+        Referrals.referral_status == ReferralStatusEnum.pending,
+        Referrals.referred_to.has(
+            Doctor.user.has(User.blacklisted == False)
+        )
     ).first()
     
     referral_data = None
@@ -2750,7 +2754,7 @@ def patient_dash_departments_tab():
 @role_required("patient")
 @blacklist_check
 def patient_dash_doctors_tab():
-    doctors_page = int(request.args.get("doctors_page", 1))
+    doctors_page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 10))
     
     cache_key = f"patient_doctors_page_{doctors_page}_per_{per_page}"
@@ -2758,14 +2762,15 @@ def patient_dash_doctors_tab():
     if cached:
         return jsonify(cached)
     
-    doctors = get_doctors_paginated(doctors_page, per_page)
+    doctors = get_doctors_paginated(doctors_page, per_page, exclude_blacklisted=True)
     
     limited_data = [
         {
             "doctor_id": doc["doctor_id"],
             "doctor_name": doc["doctor_name"],
-            "departments": doc["departments"]
-        } for doc in doctors["data"]
+            "department_names": doc["department_names"],
+            "department_ids": doc["department_ids"]
+        } for doc in doctors["doctors"]
     ]
     
     response = {
@@ -2784,7 +2789,7 @@ def patient_dash_doctors_tab():
 @role_required("patient")
 @blacklist_check
 def patient_dash_history_tab():
-    histories_page = int(request.args.get("histories_page", 1))
+    histories_page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 10))
     
     patient = current_user.patient
@@ -2810,6 +2815,20 @@ def patient_dash_history_tab():
 #         "description": department.description
 #     }), 200
 
+#Departments the doctor belongs from=====================================================================================
+# @app.route("/api/patient/doctors_tab/<int:doctor_id>/details", methods = ["GET"])
+# @role_required("patient")
+# @blacklist_check
+# def departments_the_doctor_belongs(doctor_id):
+#     department_list = get_departments_belonging_to_a_doctor(doctor_id)
+#     doctor = Doctor.query.get_or_404(doctor_id)
+#     # return jsonify({
+#     #     "department_list": department_list
+#     #     "doctor_details": {
+#     #         ""
+#     #     }
+#     # })
+
 @app.route("/api/patient/list_doctors/<int:department_id>", methods=["GET"])
 @role_required("patient")
 @blacklist_check
@@ -2825,7 +2844,14 @@ def doctor_details(doctor_id):
     doctor = Doctor.query.filter(Doctor.id == doctor_id).first()
     if not doctor:
         return jsonify({"error": "Doctor not found"}), 404
-    departments = [dept.department_name for dept in doctor.departments] if doctor.departments else []
+    # departments = [dept.department_name for dept in doctor.departments] if doctor.departments else []
+    departments = [
+        {
+            "id": dept.id,
+            "name": dept.department_name
+        } for dept in doctor.departments
+    ]
+
     return jsonify({
         "doctor_id": doctor.id,
         "doctor_name": doctor.user.username,
@@ -2896,11 +2922,15 @@ def doctor_details(doctor_id):
 
 #     return jsonify(data)
 
-@app.route("/api/patient/<int:doctor_id>/availabilities", methods=["GET"])
+@app.route("/api/patient/<int:doctor_id>/<int:department_id>/availabilities", methods=["GET"])
 @role_required("patient")
 @blacklist_check
-def get_doctor_availabilities_patient_side(doctor_id):
+def get_doctor_availabilities_patient_side(doctor_id, department_id):
     doctor = Doctor.query.get_or_404(doctor_id)
+    department = SpecializationDept.query.get_or_404(department_id)
+
+    if not department in doctor.departments:
+        return jsonify({'error': 'Doctor not from the department'})
     
     today = datetime.now().date()
     start_date = today + timedelta(days=1)
@@ -2909,7 +2939,8 @@ def get_doctor_availabilities_patient_side(doctor_id):
     availabilities = DoctorAvailability.query.filter(
         DoctorAvailability.doctor_id == doctor.id,
         DoctorAvailability.date >= start_date,
-        DoctorAvailability.date <= end_date
+        DoctorAvailability.date <= end_date,
+        DoctorAvailability.department_id == department.id
     ).order_by(DoctorAvailability.date.asc()).all()
     
     availability_map = {}
@@ -2982,6 +3013,7 @@ def get_availabilities_by_date_patient_side(doctor_id, department_id):
         "doctor": {
             "id": doctor.id,
             "name": doctor.user.username,
+            "department_name": department.department_name
         },
         "availability_details": data
     })

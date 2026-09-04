@@ -33,8 +33,13 @@ const openCancel = (id) => {
 }
 
 //Send to book flow from the referral book==============================================================================
-const goToDoctor = (id) => {
-    router.push(`/patient/doctor-details/${id}`)
+const goToDoctor = (docId, deptId) => {
+    router.push({
+        path: `/patient/doctor-details/${docId}`,
+        query: {
+            departmentId: deptId
+        }
+    })
 }
 </script>
 
@@ -85,7 +90,7 @@ const goToDoctor = (id) => {
                     <p><strong>Doctor: </strong>Dr. {{ referrals.referred_to_doctor_name}}</p>
                 </v-card-text>
                 <v-card-actions>
-                    <v-btn color="primary" @click="goToDoctor(referrals.referred_to_doctor_id)">
+                    <v-btn color="primary" @click="goToDoctor(referrals.referred_to_doctor_id, referrals.referred_to_dept_id)">
                         Book Appointment
                     </v-btn>
                 </v-card-actions>

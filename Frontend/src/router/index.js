@@ -147,6 +147,18 @@ const routes = [
       {
         path: 'slots/:availabilityId',
         component: () => import('../views/patient/AvailabilitySlots.vue')
+      },
+      {
+        path: 'doctors-tab',
+        component: () => import('../views/patient/DoctorsTab.vue')
+      },
+      {
+        path: 'doctor-departments/:id',
+        component: () => import('../views/patient/DoctorDepartments.vue')
+      },
+      {
+        path: 'histories-tab',
+        component: () => import('../views/patient/HistoriesTab.vue')
       }
     ]
   }

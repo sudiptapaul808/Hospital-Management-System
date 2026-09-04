@@ -24,7 +24,12 @@ onMounted(() => {
 })
 
 const goToAvailabilities = () => {
-    router.push(`/patient/view-availabilities/${id}`)
+    router.push({
+        path: `/patient/view-availabilities/${id}`,
+        query: {
+            departmentId: route.query.departmentId
+        }
+    })
 }
 </script>
 
@@ -42,6 +47,7 @@ const goToAvailabilities = () => {
         </v-row>
     </div>
     <div>
-        <p>Departments: {{ doctorDetails.departments?.join(", ") }}</p>
+        <!-- <p>Departments: {{ doctorDetails.departments?.join(", ") }}</p> -->
+        <p>Departments: {{ doctorDetails.departments?.map(dept => dept.name).join(", ") }}</p>
     </div>
 </template>

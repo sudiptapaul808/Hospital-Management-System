@@ -1,4 +1,4 @@
-from application.models import Doctor, Patient, SpecializationDept, Referrals, ReferralTypeEnum, ReferralStatusEnum, Appointment, AppointmentStatusEnum
+from application.models import Doctor, Patient, SpecializationDept, Referrals, ReferralTypeEnum, ReferralStatusEnum, Appointment, AppointmentStatusEnum, User
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from datetime import datetime, date
@@ -6,16 +6,26 @@ from application.cache import cache_get, cache_delete, cache_set, cache_delete_p
 from application.database import db
 
 
-def get_doctors_paginated(page, per_page):
-    doctor_page = (
-        Doctor.query.options(
-            joinedload(Doctor.user),
-            joinedload(Doctor.departments)
-            #, joinedload(Doctor.assigned_patients) Forgot the use, add this if needed
-            #     .joinedload(AssignedPatient.patient)
-            #     .joinedload(Patient.user)
-        ).paginate(page=page, per_page=per_page, error_out=False)
-    )
+def get_doctors_paginated(page, per_page, exclude_blacklisted = False):
+    if exclude_blacklisted:
+        doctor_page = (
+            Doctor.query.options(
+                joinedload(Doctor.user),
+                joinedload(Doctor.departments)
+            ).filter(
+                Doctor.user.has(User.blacklisted == False)
+            ).paginate(page=page, per_page=per_page, error_out=False)
+        )
+    else:
+        doctor_page = (
+                Doctor.query.options(
+                    joinedload(Doctor.user),
+                    joinedload(Doctor.departments)
+                    #, joinedload(Doctor.assigned_patients) Forgot the use, add this if needed
+                    #     .joinedload(AssignedPatient.patient)
+                    #     .joinedload(Patient.user)
+                ).paginate(page=page, per_page=per_page, error_out=False)
+            )
     
     return {
         "doctors": [

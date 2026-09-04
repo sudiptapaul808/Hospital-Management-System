@@ -2,9 +2,6 @@
 import { onMounted, ref } from 'vue';
 import api from '../../services/api'
 import { useRoute, useRouter } from 'vue-router'
-import { useDepartmentStore } from '../../stores/department';
-
-const deparmentStore = useDepartmentStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -12,19 +9,20 @@ const router = useRouter()
 const doctorId = route.params.doctorId
 const date = route.params.date
 const doctorName = ref('')
+const departmentName = ref('')
 
 const availabilityDetails = ref([])
 
 const fetchDetails = async() => {
     try {
-        const res = await api.get(`/api/patient/${doctorId}/${deparmentStore.id}/availabilities_by_date`,{
+        const res = await api.get(`/api/patient/${doctorId}/${route.query.departmentId}/availabilities_by_date`,{
             params: {
                 date: date
             }
         })
-        console.log(res)
         availabilityDetails.value = res.data.availability_details
         doctorName.value = res.data.doctor.name
+        departmentName.value = res.data.doctor.department_name
     } catch (err) {
         console.log(err)
     }
@@ -40,7 +38,7 @@ const goToSlots = (availabilityId) => {
 </script>
 
 <template>
-    <div>
+    <div v-if="availabilityDetails.length">
         <v-row class="mb-3" align="center" justify="space-between">
             <v-col cols="auto">
                 Availability of Dr {{ doctorName }} for {{ date }}
@@ -65,5 +63,10 @@ const goToSlots = (availabilityId) => {
                 </tr>
             </tbody>
         </v-table>
+    </div>
+    <div v-else>
+        <h4>Dr. {{ doctorName }} isn't available on {{ date }}.</h4>
+        <br>
+        No availability was found for the {{ departmentName }} department on this day
     </div>
 </template>

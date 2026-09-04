@@ -38,5 +38,24 @@ const route = useRoute()
                 <v-icon>mdi-hospital-building</v-icon>
             </template>
         </v-list-item>
+
+        <v-list-item
+            active-color="white"  
+            title="Doctors"
+            to="/patient/doctors-tab"
+            >
+            <template #prepend>
+                <v-icon>mdi-doctor</v-icon>
+            </template>
+        </v-list-item>
+        <v-list-item
+            active-color="white"  
+            title="Histories"
+            to="/patient/histories-tab"
+            >
+            <template #prepend>
+                <v-icon>mdi-clipboard-text-clock</v-icon>
+            </template>
+        </v-list-item>
     </v-navigation-drawer>
 </template>

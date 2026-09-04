@@ -3,13 +3,11 @@ import { onMounted, ref } from 'vue';
 import api from '../../services/api'
 import { useRoute, useRouter } from 'vue-router'
 import router from '../../router';
-import { useDepartmentStore } from '../../stores/department';
-
-const departmentStore = useDepartmentStore()
 
 const route = useRoute()
 const id = route.params.id
 
+const departmentId = ref(null)
 const departmentName = ref(null)
 const departmentDescription = ref(null)
 const doctors = ref([])
@@ -17,7 +15,7 @@ const doctors = ref([])
 const fetchDoctors = async() => {
     try {
         const res = await api.get(`/api/patient/list_doctors/${id}`)
-        departmentStore.id = res.data.department_id
+        departmentId.value = res.data.department_id
         departmentName.value = res.data.department_name
         departmentDescription.value = res.data.department_description
         doctors.value = res.data.doctors
@@ -31,7 +29,12 @@ onMounted(async () => {
 })
 
 const goToDoctor = (id) => {
-    router.push(`/patient/doctor-details/${id}`)
+    router.push({
+        path: `/patient/doctor-details/${id}`,
+        query: {
+            departmentId: departmentId.value
+        }
+    })
 }
 </script>
 

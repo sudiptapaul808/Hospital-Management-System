@@ -7,13 +7,14 @@ const route = useRoute()
 const router = useRouter()
 
 const doctorId = route.params.doctorId
+const departmentId = route.query.departmentId
 const doctorName = ref('')
 
 const availabilities = ref([])
 
 const fetchAvailabilities = async() => {
     try {
-        const res = await api.get(`/api/patient/${doctorId}/availabilities`)
+        const res = await api.get(`/api/patient/${doctorId}/${departmentId}/availabilities`)
         availabilities.value = res.data.availabilities
         doctorName.value = res.data.doctor.name
     } catch (err) {
@@ -26,7 +27,12 @@ onMounted(() => {
 })
 
 const goToDetails = (date) => {
-    router.push(`/patient/availability/${doctorId}/${date}`)
+    router.push({
+        path: `/patient/availability/${doctorId}/${date}`,
+        query: {
+            departmentId: departmentId
+        }
+    })
 }
 </script>
 
